@@ -32,6 +32,11 @@ type Options struct {
 	// FallbackFonts are TrueType/OpenType fonts used for characters that
 	// no ZPL font has (e.g. CJK), tried in order.
 	FallbackFonts [][]byte
+	// RFIDEncoder renders as a printer with an RFID encoder does: an ^RF
+	// field's data goes to the tag, and ^RF and ^HV fields print nothing. A
+	// printer without one prints the ^FD data as ordinary text (a ZD420
+	// prints it at the field origin, 0,0 without ^FO).
+	RFIDEncoder bool
 }
 
 // ErrInternal is returned when rendering hits an internal error (a bug);

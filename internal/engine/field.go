@@ -53,6 +53,7 @@ type field struct {
 	graphics []graphic
 	fn       int
 	hasFN    bool
+	rfid     bool // ^RF or ^HV: with an RFID encoder the data goes to the tag or host, not the label
 	serial   *serialSpec
 	clock    *[3]byte // ^FC indicators
 	fm       []image.Point
@@ -93,7 +94,7 @@ type shape struct {
 func (f *format) endField() {
 	fld := f.fld
 	f.fld = newField()
-	if f.global || fld.empty() {
+	if f.global || fld.empty() || (fld.rfid && f.pr.opt.RFIDEncoder) {
 		return
 	}
 	st := f.st

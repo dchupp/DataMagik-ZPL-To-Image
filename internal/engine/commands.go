@@ -51,6 +51,7 @@ func init() {
 		handlers[k] = noop
 	}
 	for k, h := range map[string]handler{
+		"^RF": cmdRFID, "^HV": cmdRFID,
 		"^FO": cmdFO, "^FT": cmdFT, "^FD": cmdFD, "^FV": cmdFV, "^FS": cmdFS,
 		"^FH": cmdFH, "^FB": cmdFB, "^TB": cmdTB, "^FP": cmdFP, "^FR": cmdFR,
 		"^FW": cmdFW, "^FN": cmdFN, "^FC": cmdFC, "^FE": cmdFE, "^FL": cmdFL,
@@ -175,6 +176,14 @@ func cmdFW(f *format, _ lexer.Command, ps params) error {
 		f.st.fw.just = clamp(ps.int(1, 0), 0, 2)
 	}
 	f.pr.p.fw = f.st.fw // persists across formats
+	return nil
+}
+
+// cmdRFID marks the field as an RFID tag write or read (^RF) or its return
+// to the host (^HV): a printer with an RFID encoder encodes or reports that
+// data and prints nothing for the field (Options.RFIDEncoder).
+func cmdRFID(f *format, _ lexer.Command, _ params) error {
+	f.fld.rfid = true
 	return nil
 }
 

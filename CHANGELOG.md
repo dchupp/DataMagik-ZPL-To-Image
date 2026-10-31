@@ -6,6 +6,14 @@ change the API.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-31
+
+### Added
+- `Options.RFIDEncoder` renders as a printer with an RFID encoder: `^RF`
+  tag data and `^HV` returns print nothing. By default the `^FD` of an `^RF`
+  field prints as text, as a ZD420 without an encoder prints it (fixture
+  `testdata/printer/q27`).
+
 ## [0.3.2] - 2026-10-31
 
 ### Fixed

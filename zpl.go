@@ -55,6 +55,10 @@ type Options struct {
 	// degrees, like Labelary's X-Rotation header. 90 and 270 swap the
 	// image's width and height. Any other value is ErrInvalidRotation.
 	Rotation int
+	// RFIDEncoder renders as an RFID printer does: ^RF tag data and ^HV
+	// returns print nothing. Without it, as on a printer with no RFID
+	// encoder, the ^FD of an ^RF field prints as text.
+	RFIDEncoder bool
 }
 
 // DefaultMaxPixels is the default Options.MaxPixels: 256 megapixels, about
@@ -102,6 +106,7 @@ func NewPrinter(o Options) (*Printer, error) {
 		ExpandCopies:  o.ExpandCopies,
 		Strict:        o.Strict,
 		FallbackFonts: o.FallbackFonts,
+		RFIDEncoder:   o.RFIDEncoder,
 	}
 	dpmm := o.DPMM
 	if dpmm == 0 {
