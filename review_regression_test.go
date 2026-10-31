@@ -182,3 +182,20 @@ func TestOversizedFieldsWithHugeLabel(t *testing.T) {
 		}
 	}
 }
+
+func TestManyFullLabelBoxesBounded(t *testing.T) {
+	// Each square box is a rectangle fill over the whole label; the format
+	// budget must stop them like mask fields.
+	src := "^XA" + strings.Repeat("^FO0,0^GB800,1200,800^FS", 2000) + "^XZ"
+	start := time.Now()
+	_, warnings, err := Render(strings.NewReader(src), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) == 0 {
+		t.Error("want a 'format too large' warning")
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("took %v", d)
+	}
+}

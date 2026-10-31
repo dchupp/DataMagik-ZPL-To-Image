@@ -137,7 +137,7 @@ func (f *format) renderField(fld *field, st fieldState) {
 	var key fieldKey
 	if f.memo != nil {
 		key = fieldKey{seq, string(data)}
-		if m, ok := f.memo[key]; ok {
+		if m, ok := f.memo.fields[key]; ok {
 			for _, o := range m.ops {
 				f.addOp(o)
 			}
@@ -168,11 +168,23 @@ func (f *format) renderField(fld *field, st fieldState) {
 		f.drawText(fld, st, data)
 	}
 
-	if f.memo != nil && len(f.memo) < maxMemoFields {
-		f.memo[key] = fieldResult{
-			ops:    append([]op(nil), f.ops[start:]...),
-			nextFT: f.nextFT,
-			hasFT:  f.hasFT,
+	if f.memo != nil && len(f.memo.fields) < maxMemoFields {
+		// Cached masks stay alive for the whole ^PQ run, so the cache has
+		// the same pixel budget as one label's fields.
+		ops := f.ops[start:]
+		size := 0
+		for _, o := range ops {
+			if o.mask != nil {
+				size += o.mask.W * o.mask.H
+			}
+		}
+		if f.memo.pixels+size <= maxFormatPixels {
+			f.memo.pixels += size
+			f.memo.fields[key] = fieldResult{
+				ops:    append([]op(nil), ops...),
+				nextFT: f.nextFT,
+				hasFT:  f.hasFT,
+			}
 		}
 	}
 }
@@ -188,6 +200,12 @@ type fieldResult struct {
 	ops    []op
 	nextFT image.Point
 	hasFT  bool
+}
+
+// fieldMemo is the replay cache shared by the copies of one ^PQ run.
+type fieldMemo struct {
+	fields map[fieldKey]fieldResult
+	pixels int // total size of the masks it keeps alive
 }
 
 // maxMemoFields bounds the replay cache of one ^PQ run.

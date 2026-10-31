@@ -25,8 +25,15 @@ type symbolKey struct {
 // rasterising a large glyph and resampling it, so it is worth keeping.
 var symbolCache = struct {
 	sync.Mutex
-	m map[symbolKey]*bitmap.Bitmap
+	m      map[symbolKey]*bitmap.Bitmap
+	pixels int
 }{m: map[symbolKey]*bitmap.Bitmap{}}
+
+// Symbol cache bounds: symbols up to 512×512 dots are cached, 16 Mpx in all.
+const (
+	maxCachedSymbol      = 512 * 512
+	maxSymbolCachePixels = 16 << 20
+)
 
 func (f *symbolFace) Ascent() int        { return f.h }
 func (f *symbolFace) Height() int        { return f.h }
@@ -43,12 +50,18 @@ func (f *symbolFace) Draw(dst *bitmap.Bitmap, x, baseline int, r rune) {
 	symbolCache.Unlock()
 	if !ok {
 		bm = f.render(r)
-		symbolCache.Lock()
-		if len(symbolCache.m) >= 1024 {
-			clear(symbolCache.m)
+		// Only typical symbol sizes are kept; the cache is global and
+		// long-lived, so it is bounded by total pixels, not just entries.
+		if size := f.w * f.h; size <= maxCachedSymbol {
+			symbolCache.Lock()
+			if symbolCache.pixels+size > maxSymbolCachePixels {
+				clear(symbolCache.m)
+				symbolCache.pixels = 0
+			}
+			symbolCache.m[k] = bm
+			symbolCache.pixels += size
+			symbolCache.Unlock()
 		}
-		symbolCache.m[k] = bm
-		symbolCache.Unlock()
 	}
 	if bm != nil {
 		dst.Draw(bm, x, baseline-f.h, bitmap.Black)

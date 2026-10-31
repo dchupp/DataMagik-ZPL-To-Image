@@ -71,8 +71,8 @@ type format struct {
 	opPixels int // total size of ops
 	opsFull  bool
 
-	fieldSeq int                      // fields rendered so far
-	memo     map[fieldKey]fieldResult // shared by the copies of a ^PQ run
+	fieldSeq int        // fields rendered so far
+	memo     *fieldMemo // shared by the copies of a ^PQ run
 
 	recallDepth int // current ^XF nesting
 	recalled    int // commands replayed by ^XF in this format
@@ -143,17 +143,24 @@ func (e *UnknownCommandError) Error() string {
 
 // addOp records a drawing operation.
 func (f *format) addOp(o op) {
+	// Bound the work and memory of one format's pending fields: a mask
+	// counts its size, a rectangle fill the area it covers on the label
+	// (it costs compositing time, though no memory).
+	var area int
 	if o.mask == nil {
-		if !o.rect.Empty() {
-			f.ops = append(f.ops, o)
+		if o.rect.Empty() {
+			return
 		}
-		return
+		w, h := f.labelSize()
+		c := o.rect.Intersect(image.Rect(0, 0, w, h)).Size()
+		area = max(c.X*c.Y, 1)
+	} else {
+		if o.mask.W == 0 || o.mask.H == 0 {
+			return
+		}
+		area = o.mask.W * o.mask.H
 	}
-	if o.mask.W == 0 || o.mask.H == 0 {
-		return
-	}
-	// Bound the memory held by one format's pending fields.
-	if f.opPixels += o.mask.W * o.mask.H; f.opPixels > maxFormatPixels {
+	if f.opPixels += area; f.opPixels > maxFormatPixels {
 		if !f.opsFull {
 			f.opsFull = true
 			f.pr.warnings = append(f.pr.warnings, Warning{Message: "format too large: remaining fields dropped"})
