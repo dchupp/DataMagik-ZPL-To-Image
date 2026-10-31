@@ -304,6 +304,9 @@ func TestRescale_PassthroughGolden(t *testing.T) {
 			to = 8
 		}
 		got, _, err := Rescale(src, from, to)
+		if errors.Is(err, ErrRescaleTooLarge) {
+			return // refusing too many pixels is the right answer
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -371,6 +374,9 @@ func FuzzRescale(f *testing.F) {
 	f.Fuzz(func(t *testing.T, src []byte, a, b uint8) {
 		from, to := densities[int(a)%4], densities[int(b)%4]
 		got, _, err := Rescale(src, from, to)
+		if errors.Is(err, ErrRescaleTooLarge) {
+			return // refusing too many pixels is the right answer
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
