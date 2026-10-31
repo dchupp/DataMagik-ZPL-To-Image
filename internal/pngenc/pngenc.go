@@ -13,14 +13,39 @@ import (
 
 var signature = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
 
-var zlibPool = sync.Pool{New: func() any {
-	w, _ := zlib.NewWriterLevel(io.Discard, zlib.DefaultCompression)
-	return w
-}}
+// Compression levels (zlib): BestSpeed is about twice as fast as
+// DefaultCompression for ~20% larger files on typical labels.
+const (
+	BestSpeed          = zlib.BestSpeed
+	DefaultCompression = zlib.DefaultCompression
+	BestCompression    = zlib.BestCompression
+)
 
-// Encode writes a 1-bit grayscale PNG of a w×h bitmap whose pixels are one
-// byte each, with stride bytes per row (non-zero = black).
-func Encode(dst io.Writer, pix []byte, w, h, stride int) error {
+// zlibPools holds reusable zlib writers per compression level.
+var zlibPools sync.Map // int -> *sync.Pool
+
+func zlibWriter(level int, dst io.Writer) (*zlib.Writer, *sync.Pool, error) {
+	pi, _ := zlibPools.LoadOrStore(level, &sync.Pool{})
+	pool := pi.(*sync.Pool)
+	if w, ok := pool.Get().(*zlib.Writer); ok {
+		w.Reset(dst)
+		return w, pool, nil
+	}
+	w, err := zlib.NewWriterLevel(dst, level)
+	return w, pool, err
+}
+
+var rawPool = sync.Pool{New: func() any { return new([]byte) }}
+
+// pack8 packs eight 0/1 bytes (little-endian in v, first pixel lowest) into
+// one byte with the first pixel in the most significant bit. Each input bit
+// i is moved to bit 63-i by a distinct power of two, so the products never
+// overlap or carry.
+func pack8(v uint64) byte { return byte((v * 0x8040201008040201) >> 56) }
+
+// Encode writes a 1-bit grayscale PNG of a w×h bitmap whose pixels are 0 or
+// 1 bytes (1 = black), with stride bytes per row, at the given zlib level.
+func Encode(dst io.Writer, pix []byte, w, h, stride, level int) error {
 	var hdr [13]byte
 	binary.BigEndian.PutUint32(hdr[0:], uint32(w))
 	binary.BigEndian.PutUint32(hdr[4:], uint32(h))
@@ -31,16 +56,21 @@ func Encode(dst io.Writer, pix []byte, w, h, stride int) error {
 	// Each row is a filter-type byte (0 = none) and the packed pixels.
 	// Filtering does not help 1-bit images, and skipping it is fast.
 	rowLen := 1 + (w+7)/8
-	raw := make([]byte, rowLen*h)
+	rawp := rawPool.Get().(*[]byte)
+	defer rawPool.Put(rawp)
+	if cap(*rawp) < rowLen*h {
+		*rawp = make([]byte, rowLen*h)
+	}
+	raw := (*rawp)[:rowLen*h]
 	for y := range h {
-		row := raw[y*rowLen+1 : (y+1)*rowLen]
+		row := raw[y*rowLen : (y+1)*rowLen]
+		row[0] = 0 // filter: none
+		row = row[1:]
 		src := pix[y*stride : y*stride+w]
 		x := 0
 		for ; x+8 <= w; x += 8 {
 			// Black (1) pixels become 0 bits; white become 1 bits.
-			s := src[x : x+8]
-			b := s[0]<<7 | s[1]<<6 | s[2]<<5 | s[3]<<4 | s[4]<<3 | s[5]<<2 | s[6]<<1 | s[7]
-			row[x/8] = ^b
+			row[x/8] = ^pack8(binary.LittleEndian.Uint64(src[x:]))
 		}
 		if x < w {
 			var b byte
@@ -52,15 +82,18 @@ func Encode(dst io.Writer, pix []byte, w, h, stride int) error {
 	}
 
 	var z bytes.Buffer
-	zw := zlibPool.Get().(*zlib.Writer)
-	zw.Reset(&z)
+	z.Grow(len(raw) / 8)
+	zw, pool, err := zlibWriter(level, &z)
+	if err != nil {
+		return err
+	}
 	if _, err := zw.Write(raw); err != nil {
 		return err
 	}
 	if err := zw.Close(); err != nil {
 		return err
 	}
-	zlibPool.Put(zw)
+	pool.Put(zw)
 
 	if _, err := dst.Write(signature); err != nil {
 		return err

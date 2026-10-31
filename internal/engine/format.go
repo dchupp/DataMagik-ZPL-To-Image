@@ -39,7 +39,8 @@ type fieldState struct {
 
 // op is one composited drawing operation.
 type op struct {
-	mask     *bitmap.Bitmap
+	mask     *bitmap.Bitmap  // nil for a rectangle fill
+	rect     image.Rectangle // label coordinates, when mask is nil
 	x, y     int
 	mode     bitmap.Mode
 	variable bool // ^FV field: not retained by ^MC N
@@ -69,6 +70,9 @@ type format struct {
 
 	opPixels int // total size of ops
 	opsFull  bool
+
+	fieldSeq int                      // fields rendered so far
+	memo     map[fieldKey]fieldResult // shared by the copies of a ^PQ run
 
 	recallDepth int // current ^XF nesting
 	recalled    int // commands replayed by ^XF in this format
@@ -139,7 +143,13 @@ func (e *UnknownCommandError) Error() string {
 
 // addOp records a drawing operation.
 func (f *format) addOp(o op) {
-	if o.mask == nil || o.mask.W == 0 || o.mask.H == 0 {
+	if o.mask == nil {
+		if !o.rect.Empty() {
+			f.ops = append(f.ops, o)
+		}
+		return
+	}
+	if o.mask.W == 0 || o.mask.H == 0 {
 		return
 	}
 	// Bound the memory held by one format's pending fields.
@@ -151,6 +161,15 @@ func (f *format) addOp(o op) {
 		return
 	}
 	f.ops = append(f.ops, o)
+}
+
+// apply composites the operation onto dst.
+func (o op) apply(dst *bitmap.Bitmap) {
+	if o.mask == nil {
+		dst.FillMode(o.rect, o.mode)
+		return
+	}
+	dst.Draw(o.mask, o.x, o.y, o.mode)
 }
 
 // maxFormatPixels bounds the total size of the field bitmaps one format may
@@ -197,9 +216,9 @@ func (f *format) finish() (*bitmap.Bitmap, error) {
 		}
 	}
 	for _, o := range f.ops {
-		canvas.Draw(o.mask, o.x, o.y, o.mode)
+		o.apply(canvas)
 		if retained != nil && !o.variable {
-			retained.Draw(o.mask, o.x, o.y, o.mode)
+			o.apply(retained)
 		}
 	}
 	f.pr.bg = retained

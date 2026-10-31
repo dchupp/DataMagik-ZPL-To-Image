@@ -293,52 +293,30 @@ func buildMatrix(cw []byte, model, version int, opts Options) barcode.Matrix {
 func penalty(g [][]bool) int {
 	n := len(g)
 	score := 0
-	at := func(x, y int, vertical bool) bool {
-		if vertical {
-			return g[x][y]
-		}
-		return g[y][x]
+	col := make([]bool, n)
+	for y := range n {
+		score += linePenalty(g[y])
 	}
-	for _, vertical := range []bool{false, true} {
-		for y := 0; y < n; y++ {
-			// N1: runs of five or more same-colour modules.
-			run := 1
-			for x := 1; x <= n; x++ {
-				if x < n && at(x, y, vertical) == at(x-1, y, vertical) {
-					run++
-					continue
-				}
-				if run >= 5 {
-					score += 3 + run - 5
-				}
-				run = 1
-			}
-			// N3: 1:1:3:1:1 finder-like pattern with four light modules on
-			// either side (outside the symbol counts as light).
-			light := func(x int) bool { return x < 0 || x >= n || !at(x, y, vertical) }
-			for x := 0; x+7 <= n; x++ {
-				if !(at(x, y, vertical) && !at(x+1, y, vertical) && at(x+2, y, vertical) &&
-					at(x+3, y, vertical) && at(x+4, y, vertical) && !at(x+5, y, vertical) && at(x+6, y, vertical)) {
-					continue
-				}
-				before := light(x-1) && light(x-2) && light(x-3) && light(x-4)
-				after := light(x+7) && light(x+8) && light(x+9) && light(x+10)
-				if before || after {
-					score += 40
-				}
-			}
+	for x := range n {
+		for y := range n {
+			col[y] = g[y][x]
 		}
+		score += linePenalty(col)
 	}
 	// N2: 2x2 blocks of one colour.
 	dark := 0
-	for y := 0; y < n; y++ {
-		for x := 0; x < n; x++ {
-			if g[y][x] {
+	for y := range n {
+		row := g[y]
+		for x := range n {
+			if row[x] {
 				dark++
 			}
-			if x+1 < n && y+1 < n {
-				c := g[y][x]
-				if g[y][x+1] == c && g[y+1][x] == c && g[y+1][x+1] == c {
+		}
+		if y+1 < n {
+			next := g[y+1]
+			for x := 0; x+1 < n; x++ {
+				c := row[x]
+				if row[x+1] == c && next[x] == c && next[x+1] == c {
 					score += 3
 				}
 			}
@@ -348,5 +326,37 @@ func penalty(g [][]bool) int {
 	total := n * n
 	k := (abs(dark*20-total*10)+total-1)/total - 1
 	score += k * 10
+	return score
+}
+
+// linePenalty scores one row or column for rules N1 and N3.
+func linePenalty(line []bool) int {
+	n := len(line)
+	score := 0
+	// N1: runs of five or more same-colour modules.
+	run := 1
+	for x := 1; x <= n; x++ {
+		if x < n && line[x] == line[x-1] {
+			run++
+			continue
+		}
+		if run >= 5 {
+			score += 3 + run - 5
+		}
+		run = 1
+	}
+	// N3: 1:1:3:1:1 finder-like pattern with four light modules on either
+	// side (outside the symbol counts as light).
+	light := func(x int) bool { return x < 0 || x >= n || !line[x] }
+	for x := 0; x+7 <= n; x++ {
+		if !line[x] || line[x+1] || !line[x+2] || !line[x+3] || !line[x+4] || line[x+5] || !line[x+6] {
+			continue
+		}
+		before := light(x-1) && light(x-2) && light(x-3) && light(x-4)
+		after := light(x+7) && light(x+8) && light(x+9) && light(x+10)
+		if before || after {
+			score += 40
+		}
+	}
 	return score
 }

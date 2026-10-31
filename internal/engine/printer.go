@@ -203,8 +203,13 @@ func (pr *Printer) runFormat(cmds []lexer.Command, emit func(*bitmap.Bitmap) err
 			}
 		}
 	}
+	var memo map[fieldKey]fieldResult
+	if copies > 1 {
+		memo = map[fieldKey]fieldResult{}
+	}
 	for k := range copies {
 		f := pr.newFormat(k, replicates)
+		f.memo = memo
 		for _, c := range cmds {
 			if err := f.exec(c); err != nil {
 				return err

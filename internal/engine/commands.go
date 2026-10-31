@@ -350,7 +350,12 @@ func cmdGB(f *format, _ lexer.Command, ps params) error {
 	lim := f.maxDim()
 	t := clamp(ps.int(2, 1), 1, lim)
 	w, h := clamp(max(ps.int(0, t), t), 1, lim), clamp(max(ps.int(1, t), t), 1, lim)
-	f.fld.graphics = append(f.fld.graphics, graphic{mask: boxMask(w, h, t, clamp(ps.int(4, 0), 0, 8)), white: color(ps, 3)})
+	if r := clamp(ps.int(4, 0), 0, 8); r > 0 {
+		f.fld.graphics = append(f.fld.graphics, graphic{mask: boxMask(w, h, t, r), white: color(ps, 3)})
+	} else {
+		// Square boxes are drawn as rectangle fills: no mask to allocate.
+		f.fld.graphics = append(f.fld.graphics, graphic{rects: boxRects(w, h, t), w: w, h: h, white: color(ps, 3)})
+	}
 	return nil
 }
 

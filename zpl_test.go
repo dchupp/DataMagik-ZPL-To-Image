@@ -330,3 +330,28 @@ func TestRenderPNG(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// TestCopiesMatchStandaloneRenders checks that replaying unchanged fields
+// across ^PQ copies gives exactly the image of rendering each copy alone.
+func TestCopiesMatchStandaloneRenders(t *testing.T) {
+	format := func(serial string) string {
+		return "^XA^FO20,20^A0N,40^FDStatic^FS" +
+			"^FO20,70^BQN,2,3^FDQA,static qr^FS" +
+			"^FT200,120^A0N,40^FD" + serial + "^FS^FT^A0N,40^FD-tail^FS" +
+			"^FO200,140^FR^GB150,60,60^FS^FO210,150^A0N,40^FR^FDREV^FS" +
+			"^FO20,220^BY2^BCN,50,Y,N,N^FD" + serial + "^FS"
+	}
+	o := Options{LabelWidth: 3, LabelHeight: 1.5}
+	copies := o
+	copies.ExpandCopies = true
+	imgs := render(t, format("^SN0098,1,Y")+"^PQ4^XZ", copies)
+	if len(imgs) != 4 {
+		t.Fatalf("%d copies", len(imgs))
+	}
+	for i, v := range []string{"0098", "0099", "0100", "0101"} {
+		want := render(t, format("^FD"+v)+"^XZ", o)[0]
+		if !same(imgs[i], want) {
+			t.Errorf("copy %d differs from a standalone render of %s", i, v)
+		}
+	}
+}

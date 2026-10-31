@@ -1,6 +1,7 @@
 package bitmap
 
 import (
+	"image"
 	"math/rand"
 	"testing"
 )
@@ -60,5 +61,25 @@ func TestFillRect(t *testing.T) {
 	b.FillRect(100, 0, 10, 3, false)
 	if b.Get(105, 1) || !b.Get(99, 1) {
 		t.Error("white FillRect wrong")
+	}
+}
+
+func TestFillModeMatchesDraw(t *testing.T) {
+	r := rand.New(rand.NewSource(2))
+	for n := 0; n < 1000; n++ {
+		dst := random(r, 1+r.Intn(40), 1+r.Intn(40))
+		x, y := r.Intn(60)-20, r.Intn(60)-20
+		w, h := r.Intn(30), r.Intn(30)
+		mode := Mode(r.Intn(3))
+		mask := New(w, h)
+		mask.FillRect(0, 0, w, h, true)
+		want := dst.Clone()
+		drawSlow(want, mask, x, y, mode)
+		dst.FillMode(image.Rect(x, y, x+w, y+h), mode)
+		for i := range want.Pix {
+			if want.Pix[i] != dst.Pix[i] {
+				t.Fatalf("case %d: mismatch (mode %d)", n, mode)
+			}
+		}
 	}
 }

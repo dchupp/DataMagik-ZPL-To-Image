@@ -63,6 +63,11 @@ type field struct {
 type graphic struct {
 	mask  *bitmap.Bitmap
 	white bool
+	// rects, when mask is nil, describe the graphic as non-overlapping
+	// rectangles within a w×h box (square-cornered ^GB), drawn without a
+	// mask.
+	rects []image.Rectangle
+	w, h  int
 }
 
 func newField() *field { return &field{dir: 'H'} }
@@ -75,6 +80,8 @@ func (fld *field) empty() bool {
 // ^FO placement) and a typeset anchor (used for ^FT).
 type shape struct {
 	mask    *bitmap.Bitmap
+	rects   []image.Rectangle // instead of mask: unrotated rectangle fills
+	size    image.Point       // shape size when mask is nil
 	box     image.Rectangle
 	anchor  image.Point // left typeset origin
 	ranchor image.Point // right typeset origin (right justification)
@@ -121,13 +128,35 @@ func (f *format) endField() {
 
 // renderField draws a complete field.
 func (f *format) renderField(fld *field, st fieldState) {
+	data := f.fieldData(fld, st)
+	seq := f.fieldSeq
+	f.fieldSeq++
+	// Copies of a format run the same commands in the same order, so a
+	// field with the same sequence number and data as in an earlier copy
+	// renders identically: replay its drawing operations.
+	var key fieldKey
+	if f.memo != nil {
+		key = fieldKey{seq, string(data)}
+		if m, ok := f.memo[key]; ok {
+			for _, o := range m.ops {
+				f.addOp(o)
+			}
+			f.nextFT, f.hasFT = m.nextFT, m.hasFT
+			return
+		}
+	}
+	start := len(f.ops)
+
 	for _, g := range fld.graphics {
-		s := shape{mask: g.mask, box: image.Rect(0, 0, g.mask.W, g.mask.H), white: g.white}
-		s.anchor = image.Pt(0, g.mask.H)
-		s.ranchor = image.Pt(g.mask.W, g.mask.H)
+		w, h := g.w, g.h
+		if g.mask != nil {
+			w, h = g.mask.W, g.mask.H
+		}
+		s := shape{mask: g.mask, rects: g.rects, size: image.Pt(w, h), box: image.Rect(0, 0, w, h), white: g.white}
+		s.anchor = image.Pt(0, h)
+		s.ranchor = image.Pt(w, h)
 		f.place(fld, st, s, bitmap.R0)
 	}
-	data := f.fieldData(fld, st)
 	switch {
 	case fld.barcode != nil:
 		if fld.hasData || fld.serial != nil {
@@ -138,16 +167,46 @@ func (f *format) renderField(fld *field, st fieldState) {
 	case fld.hasData || fld.serial != nil:
 		f.drawText(fld, st, data)
 	}
+
+	if f.memo != nil && len(f.memo) < maxMemoFields {
+		f.memo[key] = fieldResult{
+			ops:    append([]op(nil), f.ops[start:]...),
+			nextFT: f.nextFT,
+			hasFT:  f.hasFT,
+		}
+	}
 }
+
+// fieldKey identifies a field's output across the copies of one format.
+type fieldKey struct {
+	seq  int
+	data string
+}
+
+// fieldResult is a field's recorded output.
+type fieldResult struct {
+	ops    []op
+	nextFT image.Point
+	hasFT  bool
+}
+
+// maxMemoFields bounds the replay cache of one ^PQ run.
+const maxMemoFields = 4096
 
 // place composites a shape onto the label according to the field origin,
 // justification and rotation.
 func (f *format) place(fld *field, st fieldState, s shape, rot bitmap.Rotation) {
-	if s.mask == nil {
+	var mask *bitmap.Bitmap
+	w, h := s.size.X, s.size.Y
+	switch {
+	case s.mask != nil:
+		mask = s.mask.Rotate(rot)
+		w, h = s.mask.W, s.mask.H
+	case s.rects != nil:
+		rot = bitmap.R0 // graphics are never rotated
+	default:
 		return
 	}
-	mask := s.mask.Rotate(rot)
-	w, h := s.mask.W, s.mask.H
 	rp := func(p image.Point) image.Point {
 		x, y := bitmap.RotatePoint(rot, w, h, p.X, p.Y)
 		return image.Pt(x, y)
@@ -197,6 +256,12 @@ func (f *format) place(fld *field, st fieldState, s shape, rot bitmap.Rotation) 
 	}
 	if fld.reverse || f.pr.p.reverse {
 		mode = bitmap.Reverse
+	}
+	if mask == nil {
+		for _, r := range s.rects {
+			f.addOp(op{rect: r.Add(image.Pt(dx, dy)), mode: mode, variable: fld.variable})
+		}
+		return
 	}
 	f.addOp(op{mask: mask, x: dx, y: dy, mode: mode, variable: fld.variable})
 }

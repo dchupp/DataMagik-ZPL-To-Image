@@ -223,19 +223,25 @@ func (f *format) qrShape(ps params, data []byte) (shape, error) {
 	if qrFieldHasEC(data) {
 		opts.ECLevel = fd.ECLevel
 	}
-	m, err := qr.Encode(fd.Segments, opts)
+	// Like the printer, use the smallest version for the requested level,
+	// then raise the error correction as far as that version allows. The
+	// symbol (and its mask scoring) is built only once, at the final level.
+	v, err := qr.Fit(fd.Segments, opts)
 	if err != nil {
 		return shape{}, err
 	}
-	// Like the printer, use the smallest version for the requested level,
-	// then raise the error correction as far as that version allows.
-	opts.Version = (m.Width() - 17) / 4
-	for lvl := opts.ECLevel + 1; lvl <= qr.ECLevelH; lvl++ {
+	opts.Version = v
+	for lvl := qr.ECLevelH; lvl > opts.ECLevel; lvl-- {
 		o := opts
 		o.ECLevel = lvl
-		if better, err := qr.Encode(fd.Segments, o); err == nil {
-			m = better
+		if _, err := qr.Fit(fd.Segments, o); err == nil {
+			opts.ECLevel = lvl
+			break
 		}
+	}
+	m, err := qr.Encode(fd.Segments, opts)
+	if err != nil {
+		return shape{}, err
 	}
 	mag := f.fit(clamp(ps.int(2, f.defaultMagnification()), 1, 100), m.Width())
 	// Zebra printers place QR symbols 10 dots below the field origin.

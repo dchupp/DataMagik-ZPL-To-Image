@@ -95,43 +95,75 @@ type Options struct {
 
 // Encode builds a QR symbol from data segments. The result has no quiet zone.
 func Encode(segs []Segment, opts Options) (barcode.Matrix, error) {
-	model := opts.Model
+	model, maxVer, err := validate(segs, opts)
+	if err != nil {
+		return barcode.Matrix{}, err
+	}
+	v, bits, err := fit(segs, opts, model, maxVer)
+	if err != nil {
+		return barcode.Matrix{}, err
+	}
+	capacity := dataCodewords(model, v, opts.ECLevel) * 8
+	data := finishBits(bits, capacity)
+	cw := addECC(data, model, v, opts.ECLevel)
+	return buildMatrix(cw, model, v, opts), nil
+}
+
+// Fit returns the version Encode would use for segs and opts, without
+// building the symbol (which scores all eight masks).
+func Fit(segs []Segment, opts Options) (int, error) {
+	model, maxVer, err := validate(segs, opts)
+	if err != nil {
+		return 0, err
+	}
+	v, _, err := fit(segs, opts, model, maxVer)
+	return v, err
+}
+
+// validate checks the options and segments, returning the model and its
+// highest version.
+func validate(segs []Segment, opts Options) (model, maxVer int, err error) {
+	model = opts.Model
 	if model == 0 {
 		model = 2
 	}
 	if model != 1 && model != 2 {
-		return barcode.Matrix{}, invalid("model %d", opts.Model)
+		return 0, 0, invalid("model %d", opts.Model)
 	}
 	if opts.ECLevel < ECLevelL || opts.ECLevel > ECLevelH {
-		return barcode.Matrix{}, invalid("error correction level %d", int(opts.ECLevel))
+		return 0, 0, invalid("error correction level %d", int(opts.ECLevel))
 	}
 	if opts.ForceMask && (opts.Mask < 0 || opts.Mask > 7) {
-		return barcode.Matrix{}, invalid("mask %d", opts.Mask)
+		return 0, 0, invalid("mask %d", opts.Mask)
 	}
-	maxVer := 40
+	maxVer = 40
 	if model == 1 {
 		maxVer = 14
 		if opts.ECI > 0 {
-			return barcode.Matrix{}, invalid("ECI is not supported by Model 1")
+			return 0, 0, invalid("ECI is not supported by Model 1")
 		}
 	}
 	if opts.Version < 0 || opts.Version > maxVer {
-		return barcode.Matrix{}, invalid("version %d", opts.Version)
+		return 0, 0, invalid("version %d", opts.Version)
 	}
 	if opts.ECI > 999999 {
-		return barcode.Matrix{}, invalid("ECI %d", opts.ECI)
+		return 0, 0, invalid("ECI %d", opts.ECI)
 	}
 	if sa := opts.StructuredAppend; sa != nil {
 		if sa.Total < 2 || sa.Total > 16 || sa.Position < 1 || sa.Position > sa.Total {
-			return barcode.Matrix{}, invalid("structured append %d of %d", sa.Position, sa.Total)
+			return 0, 0, invalid("structured append %d of %d", sa.Position, sa.Total)
 		}
 	}
 	for _, s := range segs {
 		if err := validateSegment(s); err != nil {
-			return barcode.Matrix{}, err
+			return 0, 0, err
 		}
 	}
+	return model, maxVer, nil
+}
 
+// fit finds the smallest version (or the forced one) that holds the data.
+func fit(segs []Segment, opts Options, model, maxVer int) (int, *bitBuf, error) {
 	lo, hi := 1, maxVer
 	if opts.Version > 0 {
 		lo, hi = opts.Version, opts.Version
@@ -140,18 +172,16 @@ func Encode(segs []Segment, opts Options) (barcode.Matrix, error) {
 	for v := lo; v <= hi; v++ {
 		bits, err := buildBits(segs, opts, model, v)
 		if err != nil {
-			return barcode.Matrix{}, err
+			return 0, nil, err
 		}
 		capacity := dataCodewords(model, v, opts.ECLevel) * 8
 		if bits.len() > capacity {
 			lastErr = invalid("data too long for QR Model %d version %d-%s (%d bits, capacity %d)", model, v, opts.ECLevel, bits.len(), capacity)
 			continue
 		}
-		data := finishBits(bits, capacity)
-		cw := addECC(data, model, v, opts.ECLevel)
-		return buildMatrix(cw, model, v, opts), nil
+		return v, bits, nil
 	}
-	return barcode.Matrix{}, lastErr
+	return 0, nil, lastErr
 }
 
 func invalid(format string, args ...any) error {

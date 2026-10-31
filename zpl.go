@@ -46,6 +46,9 @@ type Options struct {
 	// characters no ZPL font has, tried in order. Import
 	// github.com/dchupp/DataMagik-ZPL-To-Image/fonts/notocjk for a CJK font.
 	FallbackFonts [][]byte
+	// PNGCompression selects the speed/size trade-off of RenderPNG
+	// (default PNGFast).
+	PNGCompression PNGCompression
 	// MaxPixels limits the total size of the images Render and RenderPNG
 	// return (default DefaultMaxPixels). RenderEach is not limited.
 	MaxPixels int
@@ -78,6 +81,7 @@ type Printer struct {
 	mu        sync.Mutex
 	p         *engine.Printer
 	maxPixels int
+	pngLevel  PNGCompression
 }
 
 // NewPrinter returns a printer with power-up defaults.
@@ -109,7 +113,7 @@ func NewPrinter(o Options) (*Printer, error) {
 	if maxPixels <= 0 {
 		maxPixels = DefaultMaxPixels
 	}
-	return &Printer{p: p, maxPixels: maxPixels}, nil
+	return &Printer{p: p, maxPixels: maxPixels, pngLevel: o.PNGCompression}, nil
 }
 
 // Render interprets ZPL from r and returns one image per printed label.
@@ -149,7 +153,7 @@ func (p *Printer) RenderPNG(r io.Reader) ([][]byte, []Warning, error) {
 	imgs, warnings, err := p.Render(r)
 	out := make([][]byte, 0, len(imgs))
 	for _, img := range imgs {
-		b, e := EncodePNG(img)
+		b, e := EncodePNGWith(img, p.pngLevel)
 		if e != nil {
 			return out, warnings, e
 		}
@@ -158,16 +162,44 @@ func (p *Printer) RenderPNG(r io.Reader) ([][]byte, []Warning, error) {
 	return out, warnings, err
 }
 
-// EncodePNG encodes a rendered label as a compact 1-bit PNG. Images from
-// Render take a fast path; any other image is encoded with image/png.
-func EncodePNG(img image.Image) ([]byte, error) {
+// PNGCompression trades PNG encoding speed against file size.
+type PNGCompression int
+
+const (
+	// PNGFast is the default: about twice as fast as PNGBalanced for files
+	// roughly 20% larger (typically 10–15 KB for a 4×6-inch label).
+	PNGFast PNGCompression = iota
+	// PNGBalanced uses zlib's default level.
+	PNGBalanced
+	// PNGSmallest uses maximum compression: a few percent smaller than
+	// PNGBalanced and several times slower.
+	PNGSmallest
+)
+
+func (c PNGCompression) level() (int, png.CompressionLevel) {
+	switch c {
+	case PNGBalanced:
+		return pngenc.DefaultCompression, png.DefaultCompression
+	case PNGSmallest:
+		return pngenc.BestCompression, png.BestCompression
+	}
+	return pngenc.BestSpeed, png.BestSpeed
+}
+
+// EncodePNG encodes a rendered label as a 1-bit PNG with PNGFast.
+func EncodePNG(img image.Image) ([]byte, error) { return EncodePNGWith(img, PNGFast) }
+
+// EncodePNGWith encodes img as a PNG at the given compression. Images from
+// Render take a fast 1-bit path; any other image is encoded with image/png.
+func EncodePNGWith(img image.Image, c PNGCompression) ([]byte, error) {
+	zl, pl := c.level()
 	var buf bytes.Buffer
 	if p, ok := img.(*image.Paletted); ok && isLabelPalette(p.Palette) {
 		r := p.Rect
-		err := pngenc.Encode(&buf, p.Pix[p.PixOffset(r.Min.X, r.Min.Y):], r.Dx(), r.Dy(), p.Stride)
+		err := pngenc.Encode(&buf, p.Pix[p.PixOffset(r.Min.X, r.Min.Y):], r.Dx(), r.Dy(), p.Stride, zl)
 		return buf.Bytes(), err
 	}
-	enc := png.Encoder{CompressionLevel: png.DefaultCompression}
+	enc := png.Encoder{CompressionLevel: pl}
 	if err := enc.Encode(&buf, img); err != nil {
 		return nil, err
 	}

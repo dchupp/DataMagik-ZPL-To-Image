@@ -54,6 +54,29 @@ func (b *Bitmap) Set(x, y int, black bool) {
 	}
 }
 
+// FillMode applies mode to every pixel of r (clipped): Black sets, White
+// clears, Reverse inverts.
+func (b *Bitmap) FillMode(r image.Rectangle, mode Mode) {
+	r = r.Intersect(image.Rect(0, 0, b.W, b.H))
+	if r.Empty() {
+		return
+	}
+	if mode != Reverse {
+		b.FillRect(r.Min.X, r.Min.Y, r.Dx(), r.Dy(), mode == Black)
+		return
+	}
+	for y := r.Min.Y; y < r.Max.Y; y++ {
+		row := b.Pix[y*b.W+r.Min.X : y*b.W+r.Max.X]
+		i := 0
+		for ; i+8 <= len(row); i += 8 {
+			binary.LittleEndian.PutUint64(row[i:], binary.LittleEndian.Uint64(row[i:])^0x0101010101010101)
+		}
+		for ; i < len(row); i++ {
+			row[i] ^= 1
+		}
+	}
+}
+
 // ones is a row of black pixels used to fill rows with copy.
 var ones = bytes.Repeat([]byte{1}, 4096)
 

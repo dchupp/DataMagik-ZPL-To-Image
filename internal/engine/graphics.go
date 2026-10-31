@@ -1,10 +1,26 @@
 package engine
 
 import (
+	"image"
 	"math"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
+
+// boxRects describes a square-cornered ^GB as non-overlapping rectangles
+// (so reverse-mode XOR is exact): the whole box when the border fills it,
+// otherwise its four sides.
+func boxRects(w, h, t int) []image.Rectangle {
+	if 2*t >= w || 2*t >= h {
+		return []image.Rectangle{image.Rect(0, 0, w, h)}
+	}
+	return []image.Rectangle{
+		image.Rect(0, 0, w, t),     // top
+		image.Rect(0, h-t, w, h),   // bottom
+		image.Rect(0, t, t, h-t),   // left
+		image.Rect(w-t, t, w, h-t), // right
+	}
+}
 
 // boxMask draws ^GB: a w×h box with border thickness t and corner rounding
 // index r (0–8).
@@ -94,6 +110,17 @@ func diagonalMask(w, h, t int, right bool) *bitmap.Bitmap {
 	return m
 }
 
+// unpacked[b] is byte b expanded to eight 0/1 pixels, most significant
+// bit first.
+var unpacked = func() (t [256][8]byte) {
+	for b := range 256 {
+		for i := range 8 {
+			t[b][i] = byte(b >> (7 - i) & 1)
+		}
+	}
+	return t
+}()
+
 // rowsMask converts packed 1-bpp rows (MSB first, 1 = black) to a bitmap.
 func rowsMask(data []byte, rowBytes int) *bitmap.Bitmap {
 	if rowBytes <= 0 {
@@ -104,11 +131,9 @@ func rowsMask(data []byte, rowBytes int) *bitmap.Bitmap {
 		return bitmap.New(0, 0)
 	}
 	m := bitmap.New(rowBytes*8, h)
-	for y := 0; y < h; y++ {
-		for x := 0; x < rowBytes*8; x++ {
-			if data[y*rowBytes+x/8]&(0x80>>(x%8)) != 0 {
-				m.Pix[y*m.W+x] = 1
-			}
+	for i, b := range data[:h*rowBytes] {
+		if b != 0 {
+			copy(m.Pix[i*8:], unpacked[b][:])
 		}
 	}
 	return m

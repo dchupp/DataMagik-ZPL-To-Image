@@ -17,7 +17,7 @@ func TestRoundTrip(t *testing.T) {
 			pix[i] = byte(r.Intn(2))
 		}
 		var buf bytes.Buffer
-		if err := Encode(&buf, pix, w, h, w); err != nil {
+		if err := Encode(&buf, pix, w, h, w, DefaultCompression); err != nil {
 			t.Fatal(err)
 		}
 		if h == 0 {
@@ -37,6 +37,24 @@ func TestRoundTrip(t *testing.T) {
 					t.Fatalf("%dx%d: pixel %d,%d differs", w, h, x, y)
 				}
 			}
+		}
+	}
+}
+
+func TestPack8(t *testing.T) {
+	for v := 0; v < 256; v++ {
+		var b [8]byte
+		var want byte
+		for i := range 8 {
+			b[i] = byte(v >> i & 1)
+			want |= b[i] << (7 - i)
+		}
+		u := uint64(0)
+		for i := range 8 {
+			u |= uint64(b[i]) << (8 * i)
+		}
+		if got := pack8(u); got != want {
+			t.Fatalf("pack8(%08b) = %08b, want %08b", v, got, want)
 		}
 	}
 }

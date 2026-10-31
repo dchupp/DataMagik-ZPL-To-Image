@@ -1,19 +1,32 @@
 package font
 
 import (
+	"sync"
+
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // SymbolFace returns the ^GS graphic symbol font at an h×w cell. Field data
 // characters select symbols: A ®, B ©, C ™, D UL mark, E CSA mark.
 func SymbolFace(h, w int) Face {
-	return &symbolFace{h: max(h, 1), w: max(w, 1), cache: map[rune]*bitmap.Bitmap{}}
+	return &symbolFace{h: max(h, 1), w: max(w, 1)}
 }
 
 type symbolFace struct {
-	h, w  int
-	cache map[rune]*bitmap.Bitmap
+	h, w int
 }
+
+type symbolKey struct {
+	r    rune
+	w, h int
+}
+
+// symbolCache holds rendered symbols for all faces; rendering one means
+// rasterising a large glyph and resampling it, so it is worth keeping.
+var symbolCache = struct {
+	sync.Mutex
+	m map[symbolKey]*bitmap.Bitmap
+}{m: map[symbolKey]*bitmap.Bitmap{}}
 
 func (f *symbolFace) Ascent() int        { return f.h }
 func (f *symbolFace) Height() int        { return f.h }
@@ -24,10 +37,18 @@ func (f *symbolFace) Draw(dst *bitmap.Bitmap, x, baseline int, r rune) {
 	if r >= 'a' && r <= 'e' {
 		r -= 'a' - 'A'
 	}
-	bm, ok := f.cache[r]
+	k := symbolKey{r, f.w, f.h}
+	symbolCache.Lock()
+	bm, ok := symbolCache.m[k]
+	symbolCache.Unlock()
 	if !ok {
 		bm = f.render(r)
-		f.cache[r] = bm
+		symbolCache.Lock()
+		if len(symbolCache.m) >= 1024 {
+			clear(symbolCache.m)
+		}
+		symbolCache.m[k] = bm
+		symbolCache.Unlock()
 	}
 	if bm != nil {
 		dst.Draw(bm, x, baseline-f.h, bitmap.Black)
