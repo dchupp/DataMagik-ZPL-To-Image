@@ -2,6 +2,8 @@ module github.com/dchupp/DataMagik-ZPL-To-Image/internal/verify
 
 go 1.26.0
 
+toolchain go1.26.10
+
 require (
 	github.com/dchupp/DataMagik-ZPL-To-Image v0.0.0
 	github.com/makiuchi-d/gozxing v0.1.1
