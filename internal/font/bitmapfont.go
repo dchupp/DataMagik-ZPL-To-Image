@@ -2,7 +2,6 @@ package font
 
 import (
 	"math"
-	"sync"
 	"unicode"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
@@ -16,8 +15,7 @@ type BitmapSpec struct {
 	Ascent    int // rows above the baseline
 	UpperOnly bool
 
-	mu     sync.Mutex
-	glyphs map[glyphKey]*glyph
+	glyphs cache[glyphKey, *glyph]
 }
 
 // Zebra's resident bitmap fonts at 8 dots/mm. Fonts E and H have their own
@@ -77,17 +75,12 @@ type glyphKey struct {
 // the magnification). Rendering at the final size from the outline keeps
 // magnified text smooth.
 func (s *BitmapSpec) glyph(r rune, w, h int) *glyph {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.glyphs == nil {
-		s.glyphs = map[glyphKey]*glyph{}
-	}
 	k := glyphKey{r, w, h}
-	if g, ok := s.glyphs[k]; ok {
+	if g, ok := s.glyphs.get(k); ok {
 		return g
 	}
 	g := s.outlineGlyph(r, w, h)
-	s.glyphs[k] = g
+	s.glyphs.put(k, g)
 	return g
 }
 

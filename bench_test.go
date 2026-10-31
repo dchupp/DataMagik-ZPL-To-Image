@@ -34,6 +34,24 @@ func BenchmarkShippingLabel24dpmm(b *testing.B) {
 	benchmarkLabel(b, "testdata/samples/shipping_label.zpl", Options{DPMM: 24})
 }
 
+// BenchmarkParallelShippingLabel renders with one Printer per call on all
+// GOMAXPROCS goroutines, as a server would (run with -cpu 1,8,24).
+func BenchmarkParallelShippingLabel(b *testing.B) {
+	src, err := os.ReadFile("testdata/samples/shipping_label.zpl")
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			if _, _, err := RenderPNG(bytes.NewReader(src), Options{}); err != nil {
+				b.Error(err)
+				return
+			}
+		}
+	})
+}
+
 func BenchmarkRenderOnly8dpmm(b *testing.B) {
 	src, _ := os.ReadFile("testdata/samples/shipping_label.zpl")
 	b.ReportAllocs()

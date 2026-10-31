@@ -60,10 +60,16 @@ func (g *glyph) draw(dst *bitmap.Bitmap, x, baseline int) {
 // including variable fonts at their default instance and the first font of
 // a collection).
 type Scalable struct {
-	mu     sync.Mutex
+	mu     sync.Mutex // guards face, which is not safe for concurrent use
 	face   *gotext.Face
 	upem   float64
-	glyphs map[glyphCacheKey]*glyph // rendered glyphs shared by all faces
+	gids   cache[rune, gidEntry]
+	glyphs cache[glyphCacheKey, *glyph] // rendered glyphs shared by all faces
+}
+
+type gidEntry struct {
+	gid gotext.GID
+	ok  bool
 }
 
 type glyphCacheKey struct {
@@ -72,8 +78,12 @@ type glyphCacheKey struct {
 	threshold uint8
 }
 
-// maxCachedGlyphs bounds each font's rendered-glyph cache.
-const maxCachedGlyphs = 8192
+// maxCachedGlyphs bounds each font's rendered-glyph cache, maxCachedGIDs
+// its character-to-glyph cache.
+const (
+	maxCachedGlyphs = 8192
+	maxCachedGIDs   = 65536
+)
 
 // ParseScalable parses TTF, OTF or TTC/OTC data.
 func ParseScalable(data []byte) (*Scalable, error) {
@@ -85,14 +95,21 @@ func ParseScalable(data []byte) (*Scalable, error) {
 		}
 		face = faces[0]
 	}
-	return &Scalable{face: face, upem: float64(face.Upem())}, nil
+	s := &Scalable{face: face, upem: float64(face.Upem())}
+	s.gids.max = maxCachedGIDs
+	return s, nil
 }
 
 // gid returns the glyph for r (0, the .notdef glyph, when missing).
 func (s *Scalable) gid(r rune) (gotext.GID, bool) {
+	if e, ok := s.gids.get(r); ok {
+		return e.gid, e.ok
+	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.face.NominalGlyph(r)
+	gid, ok := s.face.NominalGlyph(r)
+	s.mu.Unlock()
+	s.gids.put(r, gidEntry{gid, ok})
+	return gid, ok
 }
 
 var (
@@ -187,19 +204,11 @@ func (s *Scalable) render(r rune, em, sx float64, threshold uint8) *glyph {
 // are immutable, so they are shared between faces, fields and labels.
 func (s *Scalable) renderGID(gid gotext.GID, em, sx float64, threshold uint8) *glyph {
 	k := glyphCacheKey{gid, em, sx, threshold}
-	s.mu.Lock()
-	g, ok := s.glyphs[k]
-	s.mu.Unlock()
-	if ok {
+	if g, ok := s.glyphs.get(k); ok {
 		return g
 	}
-	g = s.rasterize(gid, em, sx, threshold)
-	s.mu.Lock()
-	if s.glyphs == nil || len(s.glyphs) >= maxCachedGlyphs {
-		s.glyphs = map[glyphCacheKey]*glyph{}
-	}
-	s.glyphs[k] = g
-	s.mu.Unlock()
+	g := s.rasterize(gid, em, sx, threshold)
+	s.glyphs.put(k, g)
 	return g
 }
 
