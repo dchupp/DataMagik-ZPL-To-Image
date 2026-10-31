@@ -6,6 +6,16 @@ change the API.
 
 ## [Unreleased]
 
+### Added
+- `barcode` package: `Encode(symbology, data, Options) (*image.Gray, error)`
+  draws one symbol (bars only, one pixel per module, no quiet zone) with
+  the renderer's encoders, for use outside ZPL. `Symbologies()` lists the
+  43 supported names with aliases and the options each honours. EAN/UPC
+  check digits given in the data are verified (`ErrCheckDigit`).
+- `Options.Rotation` turns rendered labels 0, 90, 180 or 270 degrees
+  clockwise (Labelary's `X-Rotation`); other values return
+  `ErrInvalidRotation`.
+
 ### Changed
 - Further behaviour measured on a ZD420; these symbologies now match its
   output pixel for pixel:
@@ -26,6 +36,9 @@ change the API.
   1-bit `image.PalettedImage` instead of `*image.Paletted`; code that
   type-asserted `*image.Paletted` should use the `image.Image` interface.
 - MaxiCode hexagons and finder rings are filled a row span at a time.
+- Symbol drawing (bars, matrices, postal bars, MaxiCode, TLC39, composites)
+  moved from the engine to `internal/barcode/raster`, shared with the
+  `barcode` package; rendered output is unchanged.
 - Font caches are read without locking, and the bitmap-font glyph cache is
   bounded.
 

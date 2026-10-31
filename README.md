@@ -22,6 +22,29 @@ pngs, warnings, err := zpl.RenderPNG(strings.NewReader(`^XA
   - `^PQ` expansion stops at 10,000 copies.
 - `zpl.NewPrinter` keeps printer memory between calls, as a real printer does: `~DG`/`~DY` graphics, `^DF` formats, `~DU`/`~DB` fonts, and persistent settings such as `^CI`, `^LH`, `^PW`, `^PO`, `^MC`.
 - `Warning`s report anything accepted but not reproducible exactly, and unknown commands. `Strict` turns unknown commands into errors.
+- `Options.Rotation` (0, 90, 180 or 270) turns every label image clockwise, like Labelary's `X-Rotation` header; other values return `ErrInvalidRotation`.
+
+## Barcodes without ZPL
+
+The `barcode` package draws a single symbol with the same encoders, for callers that place barcodes themselves (e.g. in a document designer):
+
+```go
+import "github.com/dchupp/DataMagik-ZPL-To-Image/barcode"
+
+img, err := barcode.Encode("qr", "https://example.com", barcode.Options{ECLevel: "H"}) // *image.Gray
+```
+
+```go
+func Encode(symbology, data string, o Options) (*image.Gray, error)
+func Symbologies() []Info // Name, Aliases, TwoD, Description, Options
+var ErrUnknownSymbology, ErrInvalidData, ErrCheckDigit, ErrInvalidOption error
+```
+
+- The image is black (0) on white (255), one pixel per module (`ModuleWidth` scales it), with no quiet zone and no human readable text. Scale it with nearest neighbour and recolour it as needed.
+- Linear symbols are one module high unless `Options.Height` (in modules) is set; stacked symbols use `RowHeight`; GS1 DataBar keeps its ISO heights; MaxiCode is drawn at 10 pixels per module column.
+- Names are matched ignoring case, spaces, `-` and `_`. Symbologies: `code128`, `gs1-128`, `code39`, `logmars`, `code93`, `code11`, `codabar`, `itf`, `industrial2of5`, `standard2of5`, `msi`, `plessey`, `ean13`, `ean8`, `upca`, `upce`, `postnet`, `planet`, `imb`, `qr`, `gs1-qr`, `datamatrix`, `gs1-datamatrix`, `aztec`, `pdf417`, `micropdf417`, `maxicode`, `codablock-f`, `code49`, `tlc39`, the GS1 DataBar family (`databar`, `-truncated`, `-stacked`, `-stacked-omni`, `-limited`, `-expanded`, `-expanded-stacked`) and composites (`upca-cc`, `upce-cc`, `ean13-cc`, `ean8-cc`, `gs1-128-cc`, `gs1-128-ccc`; data `linear|2D`).
+- Options (each ignored where it does not apply): `Ratio` (wide:narrow, 2.0–3.0, default 3.0), `CheckDigit` (Code 39, ITF, Code 128), `GS1` (Code 128, Data Matrix, QR, CODABLOCK), `ECLevel` (QR L/M/Q/H, default M), `ECPercent`/`Layers`/`Compact` (Aztec), `Security` (PDF417 1–8, 0 = automatic), `Columns`/`Rows` (PDF417, MicroPDF417, CODABLOCK-F, Data Matrix, DataBar Expanded Stacked), `Rectangular` (Data Matrix), `Mode` (MaxiCode, default 4).
+- EAN/UPC compute their check digit; data that includes one must be correct (`ErrCheckDigit`). UPC-E also takes 6–8 digit UPC-E forms. QR and Aztec add ECI 26 for non-ASCII UTF-8 data.
 
 CLI:
 
@@ -112,6 +135,7 @@ ZPL_LABELARY=1 go test -tags labelary -run Labelary -v ./internal/verify   # opt
 ZPL_PRINTER=host:9100 go test -tags zebra -run Zebra -v ./internal/verify  # optional: compare against a real Zebra printer (nothing is printed)
 go test -fuzz FuzzRender -fuzztime 60s .        # fuzz the whole pipeline
 go test -fuzz . -fuzztime 30s ./internal/barcode/qr   # fuzz one encoder (each 2D/stacked encoder and Code 128 has a fuzz test)
+go test -run XXX -fuzz FuzzEncode -fuzztime 60s ./barcode   # fuzz the public barcode package
 ```
 
 Golden fixtures named `name@DPMM.zpl` render at that density (6, 8, 12 or 24 dots/mm); the rest render at 8. The Labelary harness sends only the files in `testdata/golden` to Labelary's public API, and runs only when explicitly enabled.
