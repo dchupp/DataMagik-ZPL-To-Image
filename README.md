@@ -52,6 +52,42 @@ CLI:
 go run ./cmd/zpl2png -dpmm 8 -w 4 -h 6 -o label label.zpl   # writes label-1.png, …
 ```
 
+## Rescaling and tokenizing
+
+`Rescale` rewrites ZPL written for one density so it prints the same physical size at another, for example a template designed at 8 dots/mm (203 dpi) sent to a 12 dots/mm (300 dpi) printer:
+
+```go
+out, warnings, err := zpl.Rescale(src, 8, 12)
+```
+
+Dot-valued parameters are multiplied by `to/from` and rounded; everything else (field data, comments, whitespace, `^CC`/`^CD` changes, untouched commands) is copied byte for byte. Each limitation below is returned as a `Warning` with the byte offset of the command.
+
+| Commands | Treatment |
+|---|---|
+| `^FO` `^FT` `^LH` `^FM`, `^LS` `^LT` (clamped to ±9999, ±240), `^PW` `^LL` (≤ 32000), `^ML`, `^PF` `~TA`, `^MN` offset, `^RS` position in dots (`F`n or n; `B`n mm is kept) | scaled |
+| `^GB` `^GE` `^GD` width, height, thickness; `^GC` diameter, thickness; `^FB` width, line spacing, indent; `^TB` `^GS` `^FP` gap | scaled (`^GB` rounding is an index and is kept) |
+| `^A` `^A@` `^CF` height and width | scaled; a `^A` with no size and no `^CF` gets the scaled power-up default (9×5 dots) written out; bitmap fonts A–H warn when whole magnifications can't come within 15% |
+| `^BY` module width (1–10) and height; every `^B*` height or row height (`^B7` `^BF` `^BB` rows in dots) | scaled; module widths warn beyond 15% rounding error or when clamped |
+| `^BQ` `^BO`/`^B0` `^BR` magnification, `^BX` module size, `^BT` widths and heights | scaled within range; density-dependent defaults are written out when the target's default differs |
+| `^B4` row multiplier, `^BR` separator and composite heights (in modules), `^BY` ratio, `^BD` (fixed 25 mm) | unchanged |
+| `^GF`, `~DG`, `~DY` GRF and PNG | decoded (hex, ACS, `:B64:`, `:Z64:`, binary), resampled nearest-neighbour, re-encoded (hex, or `:Z64:` for compressed or binary sources) with new byte counts |
+| `^XG` of a graphic not in the input | magnification multiplied when `to/from` is whole, warned otherwise; `^IM`/`^IL`/`^XF` of objects not in the input warn |
+| `^DF` stored formats | rescaled like the rest of the stream |
+| `^MU` | after `^MU I`/`^MU M` measurements are physical and not scaled; a dpi conversion is left in place and warned |
+| `~DB` bitmap fonts, BMP/PCX downloads, format C data | unchanged, warned |
+| Fields that rely on the power-up `^CF` or `^BY` sizes | unchanged, warned |
+| `^PR` `^MD` `^PQ` `^SN` `^FW` `^CI`, RFID, media, network and host commands | unchanged |
+
+`Tokenize` exposes the renderer's lexer for tools such as label importers: it returns each command's canonical prefix and name, parameters, field data or payload, and its `[Offset, End)` span in the source, so commands a tool cannot model can be kept verbatim.
+
+```go
+cmds, err := zpl.Tokenize(strings.NewReader(src))
+for _, c := range cmds {
+    raw := src[c.Offset:c.End] // exactly as written
+    _ = raw
+}
+```
+
 ## Dependencies
 
 - `golang.org/x/image`: glyph rasterisation and BMP decoding.
@@ -134,6 +170,7 @@ go test -run TestGolden -update .               # regenerate testdata/golden/*.p
 ZPL_LABELARY=1 go test -tags labelary -run Labelary -v ./internal/verify   # optional: diff golden fixtures against api.labelary.com
 ZPL_PRINTER=host:9100 go test -tags zebra -run Zebra -v ./internal/verify  # optional: compare against a real Zebra printer (nothing is printed)
 go test -fuzz FuzzRender -fuzztime 60s .        # fuzz the whole pipeline
+go test -fuzz FuzzRescale -fuzztime 60s .       # fuzz Rescale (also FuzzTokenize)
 go test -fuzz . -fuzztime 30s ./internal/barcode/qr   # fuzz one encoder (each 2D/stacked encoder and Code 128 has a fuzz test)
 go test -run XXX -fuzz FuzzEncode -fuzztime 60s ./barcode   # fuzz the public barcode package
 ```

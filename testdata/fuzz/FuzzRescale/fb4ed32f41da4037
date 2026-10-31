@@ -1,0 +1,4 @@
+go test fuzz v1
+[]byte("^Ct0^A1")
+byte('\x06')
+byte('3')
