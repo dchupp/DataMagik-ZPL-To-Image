@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -32,6 +33,10 @@ type Options struct {
 	// no ZPL font has (e.g. CJK), tried in order.
 	FallbackFonts [][]byte
 }
+
+// ErrInternal is returned when rendering hits an internal error (a bug);
+// the input is rejected instead of crashing the caller.
+var ErrInternal = errors.New("engine: internal error while rendering")
 
 // MaxCopies caps the labels rendered for one format when expanding ^PQ.
 const MaxCopies = 10000
@@ -144,7 +149,13 @@ func (pr *Printer) warn(c lexer.Command, format string, args ...any) {
 // Run interprets a ZPL stream and passes each printed label to emit as
 // soon as it is rendered, so callers can stream any number of labels. An
 // error from emit stops processing and is returned.
-func (pr *Printer) Run(src []byte, emit func(*bitmap.Bitmap) error) ([]Warning, error) {
+func (pr *Printer) Run(src []byte, emit func(*bitmap.Bitmap) error) (warnings []Warning, err error) {
+	// Defence in depth: hostile input must never crash the host process.
+	defer func() {
+		if r := recover(); r != nil {
+			warnings, err = pr.warnings, fmt.Errorf("%w: %v", ErrInternal, r)
+		}
+	}()
 	pr.warnings = nil
 	cmds := lexer.All(src)
 	for i := 0; i < len(cmds); i++ {

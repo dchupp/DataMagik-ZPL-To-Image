@@ -155,3 +155,30 @@ func TestGoldenPathNaming(t *testing.T) {
 		}
 	}
 }
+
+// Regression tests for the security review findings.
+
+func TestSerialNumberLongDigitRun(t *testing.T) {
+	src := "^XA^FO10,10^A0N,30^SN" + strings.Repeat("9", 70) + ",1,Y^FS^PQ2^XZ"
+	imgs, _, err := Render(strings.NewReader(src), Options{LabelWidth: 2, LabelHeight: 1, ExpandCopies: true})
+	if err != nil || len(imgs) != 2 {
+		t.Errorf("got %d labels, %v", len(imgs), err)
+	}
+}
+
+func TestOversizedFieldsWithHugeLabel(t *testing.T) {
+	for _, src := range []string{
+		"^XA^PW100000^LL100000^FO0,0^GFA,8800000,8800000,8000,!^FS^XZ",
+		"^XA^PW100000^LL100000^FO0,0^GB60000,60000,10,B,8^FS^XZ",
+		"^XA^PW100000^LL100000^FO0,0^GE60000,60000,10^FS^GC60000,10^FS^GD60000,60000,10^FS^XZ",
+	} {
+		start := time.Now()
+		_, _, err := Render(strings.NewReader(src), Options{})
+		if errors.Is(err, engine.ErrInternal) {
+			t.Errorf("%.40s: %v", src, err)
+		}
+		if d := time.Since(start); d > 5*time.Second {
+			t.Errorf("%.40s: took %v", src, d)
+		}
+	}
+}

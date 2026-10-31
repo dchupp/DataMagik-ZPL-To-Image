@@ -498,6 +498,11 @@ func cmdTO(f *format, c lexer.Command, ps params) error {
 
 // Label layout.
 
+// maxLabelDots is the largest ^PW/^LL accepted (Zebra's documented maximum
+// is 32000 dots). It bounds maxDim, and so every field size, even before
+// finish rejects a label above bitmap.MaxPixels.
+const maxLabelDots = 32000
+
 func cmdLH(f *format, _ lexer.Command, ps params) error {
 	f.pr.p.lhX, f.pr.p.lhY = ps.int(0, 0), ps.int(1, 0)
 	return nil
@@ -505,14 +510,14 @@ func cmdLH(f *format, _ lexer.Command, ps params) error {
 
 func cmdLL(f *format, _ lexer.Command, ps params) error {
 	if v := ps.int(0, 0); v > 0 {
-		f.pr.p.ll = v
+		f.pr.p.ll = min(v, maxLabelDots)
 	}
 	return nil
 }
 
 func cmdPW(f *format, _ lexer.Command, ps params) error {
 	if v := ps.int(0, 0); v > 0 {
-		f.pr.p.pw = v
+		f.pr.p.pw = min(v, maxLabelDots)
 	}
 	return nil
 }

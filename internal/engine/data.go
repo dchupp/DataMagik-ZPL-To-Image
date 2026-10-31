@@ -132,6 +132,9 @@ func serialNumber(start, inc string, zeros bool, idx int) string {
 	for begin > 0 && start[begin-1] >= '0' && start[begin-1] <= '9' {
 		begin--
 	}
+	// Serial numbers hold at most 12 digits; indexing only the right-most
+	// 18 keeps the arithmetic within int64 for any input.
+	begin = max(begin, end-18)
 	// Leading spaces belong to the field width.
 	padStart := begin
 	for padStart > 0 && start[padStart-1] == ' ' {

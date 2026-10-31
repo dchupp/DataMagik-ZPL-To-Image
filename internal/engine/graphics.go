@@ -9,6 +9,9 @@ import (
 // boxMask draws ^GB: a w×h box with border thickness t and corner rounding
 // index r (0–8).
 func boxMask(w, h, t, r int) *bitmap.Bitmap {
+	if !bitmap.Fits(w, h) {
+		return bitmap.New(0, 0) // larger than any label; nothing can print
+	}
 	m := bitmap.New(w, h)
 	rad := float64(r) / 8 * float64(min(w, h)) / 2
 	if rad < 0.5 {
@@ -46,6 +49,9 @@ func inRoundRect(px, py, x0, y0, x1, y1, r float64) bool {
 
 // ellipseMask draws ^GE/^GC: an ellipse ring of thickness t in a w×h box.
 func ellipseMask(w, h, t int) *bitmap.Bitmap {
+	if !bitmap.Fits(w, h) {
+		return bitmap.New(0, 0) // larger than any label; nothing can print
+	}
 	m := bitmap.New(w, h)
 	rx, ry := float64(w)/2, float64(h)/2
 	ix, iy := rx-float64(t), ry-float64(t)
@@ -68,6 +74,9 @@ func ellipseMask(w, h, t int) *bitmap.Bitmap {
 // corners of a w×h box, right-leaning (/) or left-leaning (\). As on the
 // printer, the stroke extends t dots to the right of the box.
 func diagonalMask(w, h, t int, right bool) *bitmap.Bitmap {
+	if !bitmap.Fits(w+t, h) {
+		return bitmap.New(0, 0)
+	}
 	m := bitmap.New(w+t, h)
 	span := float64(w)
 	for y := 0; y < h; y++ {
@@ -91,6 +100,9 @@ func rowsMask(data []byte, rowBytes int) *bitmap.Bitmap {
 		return bitmap.New(0, 0)
 	}
 	h := len(data) / rowBytes
+	if !bitmap.Fits(rowBytes*8, h) {
+		return bitmap.New(0, 0)
+	}
 	m := bitmap.New(rowBytes*8, h)
 	for y := 0; y < h; y++ {
 		for x := 0; x < rowBytes*8; x++ {
