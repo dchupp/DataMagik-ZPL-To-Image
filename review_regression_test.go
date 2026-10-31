@@ -138,13 +138,16 @@ func TestQRErrorCorrectionParameter(t *testing.T) {
 }
 
 func TestDataMatrixQualityWarning(t *testing.T) {
-	_, warnings, _ := Render(strings.NewReader("^XA^FO10,10^BXN,5^FDabc^FS^XZ"), Options{})
-	if len(warnings) != 0 {
-		t.Errorf("omitted quality warned: %v", warnings)
+	// Without a quality a real printer prints ECC 000, which is not
+	// supported: the substitution must be reported, at the command's offset.
+	for _, src := range []string{"^XA^FO10,10^BXN,5^FDabc^FS^XZ", "^XA^FO10,10^BXN,5,80^FDabc^FS^XZ"} {
+		_, warnings, _ := Render(strings.NewReader(src), Options{})
+		if len(warnings) != 1 || warnings[0].Offset != 11 {
+			t.Errorf("%s: want one warning at offset 11, got %v", src, warnings)
+		}
 	}
-	_, warnings, _ = Render(strings.NewReader("^XA^FO10,10^BXN,5,80^FDabc^FS^XZ"), Options{})
-	if len(warnings) != 1 || warnings[0].Offset != 11 {
-		t.Errorf("explicit ECC 080: want one warning at offset 11, got %v", warnings)
+	if _, warnings, _ := Render(strings.NewReader("^XA^FO10,10^BXN,5,200^FDabc^FS^XZ"), Options{}); len(warnings) != 0 {
+		t.Errorf("quality 200 warned: %v", warnings)
 	}
 }
 

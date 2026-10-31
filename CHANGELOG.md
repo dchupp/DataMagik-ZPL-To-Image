@@ -59,9 +59,20 @@ First release.
 - About 1.4 ms to render a typical 4×6 shipping label and 2 ms including
   PNG encoding; `Options.PNGCompression` trades speed for file size.
 
+### Verified against a printer
+- A comparison harness renders fixtures on a real Zebra printer (stored with
+  `^IS`, read back with `^HG`, never printed) and diffs them with this
+  library. On a ZD420 (300 dpi) it settled behaviour the guide leaves open:
+  QR EC level and mask handling, the PDF417 automatic shape, MaxiCode
+  geometry and padding, persistent `^CF`/`^BY`/`^FW`, `^TB` line spacing,
+  GS1-128 text and Code 128 auto-mode digit runs.
+
 ### Known limitations
 - Data Matrix ECC 000–140 is encoded as ECC 200 (the legacy format is not
-  publicly specified).
+  publicly specified); `^BX` without a quality, which printers render as
+  ECC 000, returns a warning.
+- CODABLOCK row structure and GS1 Composite layout differ from a ZD420's
+  output (the encoded data is the same).
 - `^GF`/`~DY` format C (AR-compressed) and `~DS` Intellifont downloads are
   proprietary and not decoded.
 

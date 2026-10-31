@@ -78,11 +78,20 @@ Every command in the Zebra ZPL II Programming Guide index has a handler. `intern
   - Default: font A magnified by the `^BY` module width, centred below the bars.
   - A preceding `^A` font is used as given and left-aligned.
   - UPC/EAN digits are laid out between the guard bars.
-- **Calibration against Labelary:** QR placement (10 dots below the origin), QR EC-level upgrading and mask choice, `^GD` geometry, MaxiCode size, and `^B7`/`^BF`/`^BR` height units were checked against Labelary's renders. QR codes and four of the five DataBar types match pixel for pixel.
+- **Verified against a real printer:** `internal/verify` can compare renders with a Zebra printer's own output (stored with `^IS`, read back with `^HG`, nothing printed). On a ZD420 at 300 dpi, QR, PDF417, MaxiCode, graphics, interpretation lines and Code 128 match to within about 1–5% of ink area, mostly glyph-shape differences from the substitute fonts. Behaviour learned from the printer, where it differs from the guide or Labelary:
+  - `^BQ` encodes exactly the requested error-correction level and ignores the mask parameter.
+  - PDF417 picks columns so rows ÷ (columns + 4) is closest to 20/7; `^B7`, `^BF` and `^BB` row heights are in dots.
+  - MaxiCode is drawn on a whole-dot hexagon grid and ends its data with codeword 63 before padding.
+  - `^CF`, `^BY` and `^FW` persist across labels.
+  - `^TB` steps font-0 lines by 1.25× the height.
+  - GS1-128 text prints as typed.
+  - Code 128 auto mode puts an odd digit after the subset C pairs.
+- **Calibration against Labelary:**
 
 ## Known limitations
 
-- **Data Matrix ECC 000–140:** the legacy convolutional variants aren't publicly specified. `^BX` without a quality parameter is encoded as ECC 200 (Zebra's documented default is 0); an explicit quality below 200 is encoded as ECC 200 with a warning.
+- **Data Matrix ECC 000–140:** the legacy convolutional variants aren't publicly specified. Printers print ECC 000 when `^BX` has no quality parameter; this library renders ECC 200 instead and returns a warning (add quality 200 to match the printer).
+- **Known printer differences:** CODABLOCK row structure and the GS1 Composite (`^BR` types 7–12) layout differ from a ZD420's output; both still encode the same data.
 - **Proprietary compressed formats:** `^GF` format C and `~DY` format C (AR-compressed) are treated as raw binary. `~DS` Intellifont downloads fall back to font 0.
 - **Script coverage:** shaped output is only as good as the fonts supplied; other scripts need `Options.FallbackFonts` (or `~DU`/`~DY` fonts).
 - **`^CI26`:** decodes as UTF-8 when the data is valid UTF-8, otherwise as GB18030.
@@ -96,6 +105,7 @@ go test ./...                                   # unit, feature and golden-image
 go test -run TestGolden -update .               # regenerate testdata/golden/*.png after intended changes
 (cd internal/verify && go test ./...)           # decode round-trips (gozxing) for encoders and full labels
 ZPL_LABELARY=1 go test -tags labelary -run Labelary -v ./internal/verify   # optional: diff golden fixtures against api.labelary.com
+ZPL_PRINTER=host:9100 go test -tags zebra -run Zebra -v ./internal/verify  # optional: compare against a real Zebra printer (nothing is printed)
 go test -fuzz FuzzRender -fuzztime 60s .        # fuzz the whole pipeline
 go test -fuzz . -fuzztime 30s ./internal/barcode/qr   # fuzz one encoder (each 2D/stacked encoder and Code 128 has a fuzz test)
 ```

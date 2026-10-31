@@ -1,0 +1,6 @@
+^XA^PW1200^LL900^LH0,0^FWN^CI0
+^FO40,40^BXN,8^FDDefault quality^FS
+^FO400,40^BXN,8,200^FDDefault quality^FS
+^FO40,400^BXN,8,200^FDHello 123 data^FS
+^FO400,400^BXN,8,200,,,,,2^FDRectangular^FS
+^XZ

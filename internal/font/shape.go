@@ -379,3 +379,13 @@ func (f *scalableFace) glyphByID(gid gotext.GID) *glyph {
 	f.gidCache[gid] = g
 	return g
 }
+
+// TextBlockLineHeight is the line pitch ^TB uses for face: Zebra printers
+// step scalable fonts by 1.25 times the character height (the font's line
+// spacing; measured on a ZD420) and bitmap fonts by their height.
+func TextBlockLineHeight(face Face) int {
+	if faces, _ := scalableFaces(face); faces != nil {
+		return int(math.Round(float64(face.Height()) * 1.25))
+	}
+	return face.Height()
+}

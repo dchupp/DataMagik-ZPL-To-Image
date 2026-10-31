@@ -368,3 +368,29 @@ func TestGeometry(t *testing.T) {
 		}
 	}
 }
+
+// TestZebraPadding pins codewords read back from a Zebra ZD420's own
+// rendering of ^BD4^FDMaxiCode mode 4 sample: the printer ends the data with
+// codeword 63, pads with 33, and encodes " 4 " in set B with a single
+// Shift A for the digit.
+func TestZebraPadding(t *testing.T) {
+	want := []byte{4, 13, 63, 1, 24, 9, 59, 3, 15, 4, 50, 2, 42, 51, 53, 34, 22, 20, 5, 16,
+		5, 47, 13, 15, 4, 5, 47, 59, 52, 47, 19, 1, 13, 16, 12, 5, 63, 33}
+	m, err := ParseZPL(4, []byte("MaxiCode mode 4 sample"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.ZebraPadding = true
+	cw, err := Codewords(m, 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(cw[:len(want)], want) {
+		t.Errorf("codewords\n got %v\nwant %v", cw[:len(want)], want)
+	}
+	for i := len(want); i < 104; i++ {
+		if cw[i] != 33 {
+			t.Fatalf("codeword %d = %d, want PAD 33", i, cw[i])
+		}
+	}
+}

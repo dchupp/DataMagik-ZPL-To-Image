@@ -185,8 +185,17 @@ func encodeText(data []byte) ([]byte, int) {
 		}
 	}
 
+	// On equal cost, prefer encoding characters in the current set and
+	// single shifts over 2/3 Shift A, as Zebra printers do (a ZD420 encodes
+	// "e 4 s" in set B as e, space, Shift A 4, space rather than 3 Shift A).
+	rank := func(o op) int {
+		if o == op2Shift || o == op3Shift {
+			return 1
+		}
+		return 0
+	}
 	relax := func(j, s, c int, st step) {
-		if c < cost[j][s] {
+		if c < cost[j][s] || c == cost[j][s] && rank(st.o) < rank(back[j][s].o) {
 			cost[j][s] = c
 			st.valid = true
 			back[j][s] = st

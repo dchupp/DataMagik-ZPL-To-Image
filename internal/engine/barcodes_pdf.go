@@ -73,11 +73,13 @@ func (f *format) pdfFamily(fld *field, st fieldState, b *barcodeSpec, data []byt
 				Message: fmt.Sprintf("CODABLOCK %c needs at least %d columns; using %d", mode, codablock.MinColumnsF, codablock.MinColumnsF)})
 		}
 		s, err := codablock.Encode(data, codablock.Options{
-			Mode:      mode,
-			Columns:   ps.int(3, 0),
-			Rows:      ps.int(4, 0),
-			NoCheck:   !ps.yes(2, true),
-			RowHeight: f.fit(max(ps.int(1, 8), 2)*m, 44),
+			Mode:    mode,
+			Columns: ps.int(3, 0),
+			Rows:    ps.int(4, 0),
+			NoCheck: !ps.yes(2, true),
+			// h is the row height in dots (as for ^B7; measured on a ZD420);
+			// the encoder takes it in modules of the narrow width.
+			RowHeight: max(f.fit(max(ps.int(1, 8), 2), 44)/m, 1),
 			SepHeight: m,
 			Narrow:    m,
 			Ratio:     st.by.ratio,

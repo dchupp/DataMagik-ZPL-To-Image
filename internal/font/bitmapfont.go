@@ -20,8 +20,8 @@ type BitmapSpec struct {
 	glyphs map[glyphKey]*glyph
 }
 
-// Zebra's resident bitmap fonts at 6 and 8 dots/mm. Fonts E and H have
-// higher resolution matrices on 12 and 24 dots/mm printers; see BitmapFont.
+// Zebra's resident bitmap fonts at 8 dots/mm. Fonts E and H have their own
+// matrices at other densities; see hiResSpecs and BitmapFont.
 var bitmapSpecs = map[byte]*BitmapSpec{
 	'A': {Name: 'A', H: 9, W: 5, Gap: 1, Ascent: 7},
 	'B': {Name: 'B', H: 11, W: 7, Gap: 2, Ascent: 11, UpperOnly: true},
@@ -34,15 +34,20 @@ var bitmapSpecs = map[byte]*BitmapSpec{
 }
 
 var hiResSpecs = map[[2]int]*BitmapSpec{
+	// Zebra's font matrix tables: OCR-B (E) and OCR-A (H) have their own
+	// matrices at 6 dots/mm, and a larger one shared by 12 and 24 dots/mm.
+	{'E', 6}:  {Name: 'E', H: 21, W: 10, Gap: 3, Ascent: 17},
+	{'H', 6}:  {Name: 'H', H: 17, W: 11, Gap: 4, Ascent: 17, UpperOnly: true},
 	{'E', 12}: {Name: 'E', H: 42, W: 20, Gap: 6, Ascent: 34},
-	{'E', 24}: {Name: 'E', H: 84, W: 40, Gap: 12, Ascent: 68},
 	{'H', 12}: {Name: 'H', H: 34, W: 22, Gap: 9, Ascent: 34, UpperOnly: true},
-	{'H', 24}: {Name: 'H', H: 68, W: 44, Gap: 18, Ascent: 68, UpperOnly: true},
 }
 
 // BitmapFont returns the resident bitmap font spec for name at the given
 // dots/mm, or nil if name is not a bitmap font.
 func BitmapFont(name byte, dpmm int) *BitmapSpec {
+	if dpmm == 24 {
+		dpmm = 12 // 24 dots/mm printers use the 12 dots/mm matrices
+	}
 	if s, ok := hiResSpecs[[2]int{int(name), dpmm}]; ok {
 		return s
 	}

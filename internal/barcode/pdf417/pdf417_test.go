@@ -128,7 +128,9 @@ func TestTables(t *testing.T) {
 }
 
 // TestDecodedGolden pins codeword streams of symbols that zxing-cpp decoded
-// back to the input (PNG round trips run while developing).
+// back to the input (PNG round trips run while developing). Shapes are given
+// explicitly so the streams (whose padding depends on the shape) stay valid
+// independently of the automatic sizing rule.
 func TestDecodedGolden(t *testing.T) {
 	cases := []struct {
 		data  string
@@ -137,10 +139,10 @@ func TestDecodedGolden(t *testing.T) {
 		rows  int
 		words []int
 	}{
-		{"HELLO WORLD", Options{}, 2, 5, []int{8, 214, 341, 446, 674, 521, 119, 900, 812, 808}},
-		{"PDF417 Truncated test 0123", Options{SecurityLevel: 1, Truncated: true}, 3, 7,
+		{"HELLO WORLD", Options{Columns: 2}, 2, 5, []int{8, 214, 341, 446, 674, 521, 119, 900, 812, 808}},
+		{"PDF417 Truncated test 0123", Options{SecurityLevel: 1, Truncated: true, Columns: 3}, 3, 7,
 			[]int{17, 453, 178, 121, 236, 859, 827, 613, 60, 574, 116, 574, 559, 808, 1, 63, 900, 662, 55, 754, 612}},
-		{"Hello, World! 1234567890123456 abc DEF ;;;; xyz\r\n\t~{}", Options{SecurityLevel: 2}, 5, 9,
+		{"Hello, World! 1234567890123456 abc DEF ;;;; xyz\r\n\t~{}", Options{SecurityLevel: 2, Columns: 5}, 5, 9,
 			[]int{37, 237, 131, 344, 853, 808, 687, 437, 333, 880, 809, 902, 19, 23, 229, 801, 348, 256, 900, 807, 1, 86, 813, 814, 815, 808, 750, 0, 29, 807, 714, 778, 359, 462, 759, 807, 900, 764, 607, 434, 710, 259, 236, 344, 156}},
 		{"\u00e9\u00e8 bytes \x01\x02\x03 mixed 99", Options{SecurityLevel: 3, Columns: 5}, 5, 8,
 			[]int{24, 901, 195, 169, 195, 168, 900, 807, 54, 574, 566, 901, 1, 2, 3, 900, 807, 368, 694, 116, 849, 299, 900, 900, 905, 747, 469, 215, 781, 580, 451, 297, 901, 545, 707, 679, 206, 43, 435, 621}},
@@ -160,8 +162,91 @@ func TestDecodedGolden(t *testing.T) {
 
 func TestSizing(t *testing.T) {
 	// ^B7: 72 codewords with no rows/columns -> 6 columns x 12 rows.
-	if c, r, err := size(72, 0, 0); err != nil || c != 6 || r != 12 {
-		t.Errorf("size(72) = %d x %d, %v", c, r, err)
+	// Shapes measured on a Zebra ZD420: {codewords, columns, rows}.
+	for _, m := range [][3]int{
+		{16, 1, 16},
+		{20, 1, 20},
+		{24, 2, 12},
+		{28, 2, 14},
+		{32, 2, 16},
+		{36, 2, 18},
+		{40, 2, 20},
+		{44, 3, 15},
+		{48, 3, 16},
+		{52, 3, 18},
+		{56, 3, 19},
+		{60, 3, 20},
+		{64, 3, 22},
+		{68, 3, 23},
+		{72, 3, 24},
+		{76, 4, 19},
+		{80, 4, 20},
+		{84, 4, 21},
+		{88, 4, 22},
+		{92, 4, 23},
+		{96, 4, 24},
+		{100, 4, 25},
+		{104, 4, 26},
+		{108, 5, 22},
+		{112, 5, 23},
+		{116, 5, 24},
+		{120, 5, 24},
+		{124, 5, 25},
+		{128, 5, 26},
+		{132, 5, 27},
+		{136, 5, 28},
+		{140, 5, 28},
+		{144, 5, 29},
+		{148, 6, 25},
+		{152, 6, 26},
+		{156, 6, 26},
+		{160, 6, 27},
+		{164, 6, 28},
+		{168, 6, 28},
+		{172, 6, 29},
+		{176, 6, 30},
+		{180, 6, 30},
+		{184, 6, 31},
+		{188, 6, 32},
+		{192, 7, 28},
+		{196, 7, 28},
+		{200, 7, 29},
+		{204, 7, 30},
+		{208, 7, 30},
+		{212, 7, 31},
+		{216, 7, 31},
+		{220, 7, 32},
+		{224, 7, 32},
+		{228, 7, 33},
+		{232, 7, 34},
+		{236, 7, 34},
+		{240, 7, 35},
+		{244, 8, 31},
+		{248, 8, 31},
+		{252, 8, 32},
+		{256, 8, 32},
+		{260, 8, 33},
+		{264, 8, 33},
+		{268, 8, 34},
+		{272, 8, 34},
+		{276, 8, 35},
+		{280, 8, 35},
+		{284, 8, 36},
+		{288, 8, 36},
+		{292, 8, 37},
+		{296, 8, 37},
+		{300, 9, 34},
+		{304, 9, 34},
+		{308, 9, 35},
+		{312, 9, 35},
+		{316, 9, 36},
+		{320, 9, 36},
+		{324, 9, 36},
+		{328, 9, 37},
+	} {
+		if c, r, err := size(m[0], 0, 0); err != nil || c != m[1] || r != m[2] {
+			t.Errorf("size(%d) = %d x %d, %v; printer used %d x %d", m[0], c, r, err, m[1], m[2])
+		}
 	}
 	for total := 3; total <= 928; total++ {
 		c, r, err := size(total, 0, 0)

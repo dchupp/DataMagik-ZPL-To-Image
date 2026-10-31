@@ -97,8 +97,7 @@ func (pr *Printer) newFormat(copyIndex, replicates int) *format {
 		fnData:     map[int][]byte{},
 		storePrint: true,
 	}
-	f.st.by = byDefaults{module: 2, ratio: 3.0, height: 10}
-	f.st.cf = cfDefaults{font: 'A', h: 9, w: 5}
+	f.st.by, f.st.cf, f.st.fw = pr.p.by, pr.p.cf, pr.p.fw
 	f.fld = newField()
 	return f
 }

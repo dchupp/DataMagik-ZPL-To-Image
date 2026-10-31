@@ -174,6 +174,7 @@ func cmdFW(f *format, _ lexer.Command, ps params) error {
 	if ps.has(1) {
 		f.st.fw.just = clamp(ps.int(1, 0), 0, 2)
 	}
+	f.pr.p.fw = f.st.fw // persists across formats
 	return nil
 }
 
@@ -270,6 +271,7 @@ func cmdCF(f *format, _ lexer.Command, ps params) error {
 	case ps.has(2):
 		f.st.cf.h, f.st.cf.w = 0, clamp(ps.int(2, 0), 0, f.maxDim())
 	}
+	f.pr.p.cf = f.st.cf // persists across formats
 	return nil
 }
 
@@ -319,6 +321,7 @@ func cmdBY(f *format, _ lexer.Command, ps params) error {
 	if ps.has(2) {
 		f.st.by.height = clamp(ps.int(2, 10), 1, f.maxDim())
 	}
+	f.pr.p.by = f.st.by // persists across formats
 	return nil
 }
 

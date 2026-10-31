@@ -1,0 +1,9 @@
+^XA^PW1200^LL900^LH0,0^FWN^CI0
+^CF0,40
+^FO30,30^FDDefault font 0 at 40^FS
+^FO30,100^ADN^FDAD without size after CF0,40^FS
+^FO30,200^AFN^FDAF without size^FS
+^FO30,300^A0N^FDA0 without size^FS
+^CFA,30
+^FO30,400^ADN^FDAD after CFA,30^FS
+^XZ

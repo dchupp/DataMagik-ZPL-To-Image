@@ -205,11 +205,9 @@ func (f *format) qrShape(ps params, data []byte) (shape, error) {
 	} else if l, ok := qrECLetter(ps.char(3, 0)); ok {
 		paramEC = l
 	}
-	// The guide documents a default mask of 7, but printers choose the mask
-	// by penalty score unless one is given explicitly.
-	if ps.has(4) {
-		opts.ForceMask, opts.Mask = true, clamp(ps.int(4, 7), 0, 7)
-	}
+	// The ^BQ mask parameter is ignored: a ZD420 produced identical symbols
+	// for masks 0–7 and no mask, always choosing by penalty score (which
+	// this encoder reproduces exactly).
 	switch f.pr.p.charset.ID {
 	case 28, 29, 30:
 		opts.DisableAutoKanji = true
@@ -223,22 +221,8 @@ func (f *format) qrShape(ps params, data []byte) (shape, error) {
 	if qrFieldHasEC(data) {
 		opts.ECLevel = fd.ECLevel
 	}
-	// Like the printer, use the smallest version for the requested level,
-	// then raise the error correction as far as that version allows. The
-	// symbol (and its mask scoring) is built only once, at the final level.
-	v, err := qr.Fit(fd.Segments, opts)
-	if err != nil {
-		return shape{}, err
-	}
-	opts.Version = v
-	for lvl := qr.ECLevelH; lvl > opts.ECLevel; lvl-- {
-		o := opts
-		o.ECLevel = lvl
-		if _, err := qr.Fit(fd.Segments, o); err == nil {
-			opts.ECLevel = lvl
-			break
-		}
-	}
+	// The printer encodes at exactly the requested level (verified on a
+	// ZD420; Labelary instead raises it as far as the version allows).
 	m, err := qr.Encode(fd.Segments, opts)
 	if err != nil {
 		return shape{}, err
@@ -252,7 +236,7 @@ func (f *format) qrShape(ps params, data []byte) (shape, error) {
 func (f *format) dataMatrixShape(b *barcodeSpec, st fieldState, data []byte) (shape, error) {
 	ps := b.ps
 	opts := datamatrix.Options{
-		Quality:     ps.int(2, 200),
+		Quality:     ps.int(2, 0),
 		Columns:     ps.int(3, 0),
 		Rows:        ps.int(4, 0),
 		FormatID:    ps.int(5, 6),
@@ -268,11 +252,16 @@ func (f *format) dataMatrixShape(b *barcodeSpec, st fieldState, data []byte) (sh
 	if opts.Rows > 49 {
 		opts.Rows = 0
 	}
-	// Zebra documents quality 0 as the default, but ECC 000–140 is a
-	// closed legacy format; an omitted quality is treated as ECC 200 and
-	// only an explicit request for ECC 000–140 is reported.
+	// The default quality is 0, and printers really print ECC 000 then (a
+	// ZD420's ^BX symbol without a quality parameter is not ECC 200). ECC
+	// 000–140 is not implemented, so it is rendered as ECC 200 and reported:
+	// the image will differ from the printer's.
 	if opts.Quality != 200 {
-		f.pr.warnings = append(f.pr.warnings, Warning{Offset: b.offset, Command: "^BX", Message: fmt.Sprintf("ECC %03d is not supported; encoding as ECC 200", opts.Quality)})
+		msg := fmt.Sprintf("ECC %03d is not supported; rendered as ECC 200", opts.Quality)
+		if !ps.has(2) {
+			msg = "no quality given, so a printer would print ECC 000, which is not supported; rendered as ECC 200 (add quality 200 to ^BX to match)"
+		}
+		f.pr.warnings = append(f.pr.warnings, Warning{Offset: b.offset, Command: "^BX", Message: msg})
 		opts.Quality = 200
 	}
 	m, err := datamatrix.Encode(data, opts)
@@ -311,28 +300,36 @@ func (f *format) maxiShape(ps params, data []byte) (shape, error) {
 		Mode:         clamp(ps.int(0, 2), 2, 6),
 		SymbolNumber: clamp(ps.int(1, 1), 1, 8),
 		SymbolCount:  clamp(ps.int(2, 1), 1, 8),
+		ZebraPadding: true,
 	})
 	if err != nil {
 		return shape{}, err
 	}
+	// The printer lays hexagons on a whole-dot grid: on a 300 dpi ZD420 the
+	// symbol is 25 mm wide with 10-dot columns and 9-dot rows (299×298 dots),
+	// i.e. the row pitch is the column pitch times √3/2, rounded.
 	const widthMM = 25.0
-	unit := widthMM / maxicode.SymbolWidth * float64(f.dpmm()) // dots per W
-	w := int(math.Ceil(maxicode.SymbolWidth * unit))
-	h := int(math.Ceil(maxicode.SymbolHeight * unit))
+	col := max(math.Round(widthMM/maxicode.SymbolWidth*float64(f.dpmm())), 3) // dots per column (W)
+	row := max(math.Round(col*maxicode.RowPitch), 2)                          // dots per row
+	center := func(x, y int) (float64, float64) {
+		cx, _ := maxicode.ModuleCenter(x, y)
+		return cx * col, float64(y)*row + maxicode.HexHeight/2*col
+	}
+	w := int(math.Ceil(maxicode.SymbolWidth * col))
+	h := int(math.Ceil(float64(maxicode.Rows-1)*row + maxicode.HexHeight*col))
 	bm := bitmap.New(w, h)
-	r := maxicode.HexHeight / 2 // circumradius in W
-	for y, row := range m.Rows {
-		for x, dark := range row {
-			if !dark {
-				continue
+	r := maxicode.HexHeight / 2 * col // circumradius in dots
+	for y, cells := range m.Rows {
+		for x, dark := range cells {
+			if dark {
+				cx, cy := center(x, y)
+				fillHexagon(bm, cx, cy, r*0.92)
 			}
-			cx, cy := maxicode.ModuleCenter(x, y)
-			fillHexagon(bm, cx*unit, cy*unit, r*unit*0.92)
 		}
 	}
-	fcx, fcy := maxicode.FinderCenter()
+	fcx, fcy := center(14, 16)
 	for _, ring := range maxicode.FinderRings() {
-		fillRing(bm, fcx*unit, fcy*unit, ring[0]/2*unit, ring[1]/2*unit)
+		fillRing(bm, fcx, fcy, ring[0]/2*col, ring[1]/2*col)
 	}
 	return boxShape(bm), nil
 }

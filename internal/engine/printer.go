@@ -69,9 +69,14 @@ type persistent struct {
 	cwAlias   map[byte]string
 	links     map[string][]string // ^FL base → extension fonts
 	pa        advancedLayout      // ^PA
-	encTable  map[uint16]rune     // ^SE table
-	clockOff  time.Duration       // ^ST
-	clockOffs [4]clockOffset      // ^SO per indicator (index 2, 3)
+	// Field defaults also persist across formats (verified on a ZD420;
+	// even ^JUR does not reset them): ^BY, ^CF and ^FW.
+	by        byDefaults
+	cf        cfDefaults
+	fw        fwDefaults
+	encTable  map[uint16]rune // ^SE table
+	clockOff  time.Duration   // ^ST
+	clockOffs [4]clockOffset  // ^SO per indicator (index 2, 3)
 }
 
 // advancedLayout is the ^PA state.
@@ -117,6 +122,8 @@ func New(opt Options) (*Printer, error) {
 		fontOver: map[byte]*font.Scalable{},
 	}
 	pr.p.cwAlias = map[byte]string{}
+	pr.p.by = byDefaults{module: 2, ratio: 3.0, height: 10} // power-up defaults
+	pr.p.cf = cfDefaults{font: 'A', h: 9, w: 5}
 	pr.p.links = map[string][]string{}
 	for i, data := range opt.FallbackFonts {
 		s, err := font.ParseScalable(data)
@@ -207,7 +214,13 @@ func (pr *Printer) runFormat(cmds []lexer.Command, emit func(*bitmap.Bitmap) err
 	if copies > 1 {
 		memo = &fieldMemo{fields: map[fieldKey]fieldResult{}}
 	}
+	// Every copy is the same label, so each starts from the printer state
+	// the format started from.
+	start := pr.p
 	for k := range copies {
+		if k > 0 {
+			pr.p = start
+		}
 		f := pr.newFormat(k, replicates)
 		f.memo = memo
 		for _, c := range cmds {

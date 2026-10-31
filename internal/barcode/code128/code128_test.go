@@ -70,14 +70,14 @@ func TestCodewords(t *testing.T) {
 		{"FNC1 B", ">:>8AB", Options{}, []int{104, 102, 33, 34}, "AB"},
 		{"auto digits", "1234", Options{Mode: ModeAuto}, []int{105, 12, 34}, "1234"},
 		{"auto mixed", "AB12345678", Options{Mode: ModeAuto}, []int{104, 33, 34, 99, 12, 34, 56, 78}, "AB12345678"},
-		{"auto odd", "12345X", Options{Mode: ModeAuto}, []int{104, 17, 99, 23, 45, 100, 56}, "12345X"},
+		{"auto odd", "12345X", Options{Mode: ModeAuto}, []int{105, 12, 34, 100, 21, 56}, "12345X"},
 		{"auto short digits", "A12B", Options{Mode: ModeAuto}, []int{104, 33, 17, 18, 34}, "A12B"},
 		{"auto control", "A\x01B", Options{Mode: ModeAuto}, []int{103, 33, 65, 34}, "AB"},
 		{"auto shift", "a\x01b", Options{Mode: ModeAuto}, []int{104, 65, 98, 65, 66}, "ab"},
 		{"auto fnc1", ">;>80204017773003486100008535>8910001>837252", Options{Mode: ModeAuto},
 			[]int{104, 102, 16, 99, 20, 40, 17, 77, 30, 3, 48, 61, 0, 0, 85, 35, 102, 91, 0, 1, 102, 37, 25, 100, 18}, "020401777300348610000853591000137252"},
 		{"gs1 sscc", "(00)10084423 7449200940", Options{Mode: ModeGS1},
-			[]int{105, 102, 0, 10, 8, 44, 23, 74, 49, 20, 9, 41}, "(00) 1 0084423 7449200941"},
+			[]int{105, 102, 0, 10, 8, 44, 23, 74, 49, 20, 9, 41}, "(00)10084423 7449200941"},
 		{"gs1 gtin append", "(01)0061414199999", Options{Mode: ModeGS1},
 			[]int{105, 102, 1, 0, 61, 41, 41, 99, 99, 96}, "(01)00614141999996"},
 		{"gs1 gtin replace", "(01)00614141999990(10)AB1", Options{Mode: ModeGS1},
@@ -225,4 +225,16 @@ func decodeVals(t *testing.T, vals []int) string {
 		}
 	}
 	return string(out)
+}
+
+// TestAutoOddDigitsLast pins a ZD420's encoding of ^BCN,,,,,A^FD12345678901:
+// Start C, the five pairs, Code B, then the odd digit.
+func TestAutoOddDigitsLast(t *testing.T) {
+	vals, _, err := Codewords("12345678901", Options{Mode: ModeAuto})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []int{105, 12, 34, 56, 78, 90, 100, 17}; !reflect.DeepEqual(vals, want) {
+		t.Errorf("got %v, want %v", vals, want)
+	}
 }

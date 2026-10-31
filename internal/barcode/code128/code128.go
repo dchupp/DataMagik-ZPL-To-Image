@@ -420,8 +420,16 @@ func autoEncode(toks []int) []int {
 	}
 	var set subset
 	nd := digitRun(toks, j)
+	// Runs of four or more digits go to subset C as pairs. An odd digit is
+	// left for after the pairs (a ZD420 encodes "12345678901" as Start C,
+	// five pairs, Code B, "1"; ISO 15417 Annex E would put it first), except
+	// when the run continues past an FNC1, which subset C can carry: then
+	// the odd digit goes first so the whole run stays in C.
+	oddFirst := func(i, nd int) bool {
+		return nd%2 == 1 && i+nd < len(toks) && toks[i+nd] == tokFNC1
+	}
 	switch {
-	case nd >= 4 && nd%2 == 0, nd == 2 && j+2 == len(toks):
+	case nd >= 4 && !oddFirst(j, nd), nd == 2 && j+2 == len(toks):
 		set = setC
 	default:
 		set = chooseAB(toks, j)
@@ -469,7 +477,7 @@ func autoEncode(toks []int) []int {
 			continue
 		}
 		if nd := digitRun(toks, i); nd >= 4 {
-			if nd%2 == 1 {
+			if oddFirst(i, nd) {
 				enc(t, set)
 				i++
 			}
@@ -596,14 +604,9 @@ func parseGS1(data string) ([]int, string) {
 				toks = append(toks, int(f.ai[i]))
 			}
 		}
-		if raw := strings.TrimLeft(string(f.raw), " "); f.ai == "00" && raw != "" {
-			// Zebra prints an SSCC as "(00) 1 0084423 7449200941": a space
-			// after the AI and after the extension digit (ZPL II guide ^BC
-			// figure "D for the m parameter").
-			text.WriteString(" " + raw[:1] + " " + strings.TrimLeft(raw[1:], " "))
-		} else {
-			text.Write(f.raw)
-		}
+		// The field prints as typed. (The guide's ^BC figure shows an SSCC
+		// as "(00) 1 0084423 ...", but a ZD420 prints "(00)10084423...".)
+		text.Write(f.raw)
 		for _, c := range f.raw {
 			if c != ' ' {
 				toks = append(toks, int(c))

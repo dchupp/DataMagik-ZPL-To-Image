@@ -96,6 +96,10 @@ type Message struct {
 	// Data is the secondary ("low priority") message in modes 2 and 3, or
 	// the whole message in modes 4 to 6. Bytes are ISO/IEC 8859-1.
 	Data []byte
+	// ZebraPadding pads like Zebra printers (codeword 63, then PAD) instead
+	// of the ISO/IEC 16023 examples (PAD only, after latching out of code
+	// sets C and D). Both decode identically.
+	ZebraPadding bool
 }
 
 // Options are the ^BD parameters.
@@ -107,6 +111,8 @@ type Options struct {
 	// append header is encoded.
 	SymbolNumber int
 	SymbolCount  int
+	// ZebraPadding selects Zebra's padding (see Message.ZebraPadding).
+	ZebraPadding bool
 }
 
 func errf(format string, a ...any) error {
@@ -207,6 +213,7 @@ func Encode(fieldData []byte, opts Options) (barcode.Matrix, error) {
 	if err != nil {
 		return barcode.Matrix{}, err
 	}
+	m.ZebraPadding = opts.ZebraPadding
 	return EncodeMessage(m, opts.SymbolNumber, opts.SymbolCount)
 }
 
@@ -258,7 +265,17 @@ func Codewords(m Message, symbolNumber, symbolCount int) ([144]byte, error) {
 	if len(stream) > capacity {
 		return cw, errf("data needs %d codewords, mode %d holds %d", len(stream), m.Mode, capacity)
 	}
-	if len(stream) < capacity {
+	switch {
+	case len(stream) == capacity:
+	case m.ZebraPadding:
+		// Zebra printers (read back from a ZD420) end the data with
+		// codeword 63, a latch in every code set (to B from A, C, D and E;
+		// to A from B), then pad with 33, the PAD character of sets A and B.
+		stream = append(stream, 63)
+		for len(stream) < capacity {
+			stream = append(stream, cwPad)
+		}
+	default:
 		pad := byte(cwPad)
 		switch final {
 		case setC, setD:

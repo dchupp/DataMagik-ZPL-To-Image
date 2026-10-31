@@ -171,8 +171,12 @@ func EncodeCodewords(data []int, opts Options) (Symbol, error) {
 
 // size chooses the symbol dimensions for total codewords following the ^B7
 // rules: both given -> must fit; one given -> the other is derived; neither
-// -> the shape closest to Zebra's 1:2 column-to-row ratio (rows = 2*cols,
-// e.g. 72 codewords -> 6 columns x 12 rows).
+// -> the printer's automatic shape. Measured on a Zebra ZD420 (79 sizes from
+// 16 to 328 codewords), the printer picks the column count whose rows divided
+// by the total codeword columns (data columns plus start, stop and the two
+// row indicators) is closest to 20/7, preferring fewer columns on a tie. The
+// guide's own example (72 codewords -> 6 x 12) does not match the printer,
+// which uses 3 x 24.
 func size(total, cols, rows int) (int, int, error) {
 	tooLong := func() (int, int, error) {
 		return 0, 0, fmt.Errorf("%w: pdf417: %d codewords do not fit (columns %d, rows %d)", barcode.ErrInvalidData, total, cols, rows)
@@ -202,17 +206,13 @@ func size(total, cols, rows int) (int, int, error) {
 		}
 		return max(c, 1), rows, nil
 	}
-	bestC, bestR, bestD := 0, 0, math.MaxInt
+	bestC, bestR, bestD := 0, 0, math.Inf(1)
 	for c := 1; c <= MaxColumns; c++ {
 		r := max(MinRows, (total+c-1)/c)
 		if r > MaxRows || r*c > MaxCodewords {
 			continue
 		}
-		d := r - 2*c
-		if d < 0 {
-			d = -d
-		}
-		if d < bestD || (d == bestD && r*c < bestR*bestC) {
+		if d := math.Abs(float64(r)/float64(c+4) - 20.0/7); d < bestD {
 			bestC, bestR, bestD = c, r, d
 		}
 	}

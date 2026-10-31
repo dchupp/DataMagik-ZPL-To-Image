@@ -441,8 +441,9 @@ func (f *format) drawTB(fld *field, st fieldState, face font.Face, rot bitmap.Ro
 	measure := func(rs []rune) int { return font.Layout(face, rs, opts).Width }
 	lines := wrap(measure, text, width, 0, false)
 	m := bitmap.New(width, height)
+	pitch := font.TextBlockLineHeight(face)
 	for i, ln := range lines {
-		top := i * h
+		top := i * pitch
 		if top+h > height {
 			break
 		}
