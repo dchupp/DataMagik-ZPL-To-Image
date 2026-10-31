@@ -1,0 +1,4 @@
+go test fuzz v1
+[]byte("~DG,,2000000,!")
+byte('X')
+byte('\x16')

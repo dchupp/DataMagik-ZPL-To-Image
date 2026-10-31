@@ -5,6 +5,8 @@ import (
 	"compress/zlib"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -13,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/compress"
 )
@@ -389,4 +392,28 @@ func FuzzRescale(f *testing.F) {
 			}
 		}
 	})
+}
+
+// Fifty 2048x2048 graphics of compressed hex are 100 KB of ZPL but 200
+// megapixels to resample at 4x: a print job must not spend seconds on that.
+func TestRescale_GraphicsBudget(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("^XA")
+	row := 256 // bytes per row
+	for i := 0; i < 50; i++ {
+		fmt.Fprintf(&b, "^FO0,0^GFA,%d,%d,%d,F,%s^FS", row*2048, row*2048, row, strings.Repeat(":", 2047))
+	}
+	b.WriteString("^XZ")
+	start := time.Now()
+	_, _, err := Rescale([]byte(b.String()), 6, 24)
+	if !errors.Is(err, ErrRescaleTooLarge) {
+		t.Fatalf("err = %v, want ErrRescaleTooLarge", err)
+	}
+	if d := time.Since(start); d > 3*time.Second {
+		t.Fatalf("took %v", d)
+	}
+	// One ordinary graphic is well inside the budget.
+	if _, _, err := Rescale([]byte("^XA^FO0,0^GFA,8,8,1,FF00FF00FF00FF00^FS^XZ"), 8, 12); err != nil {
+		t.Fatal(err)
+	}
 }

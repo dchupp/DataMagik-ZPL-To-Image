@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -69,7 +70,30 @@ func Rescale(src []byte, fromDPMM, toDPMM int) ([]byte, []Warning, error) {
 		cfFont: 'A', srcCF: [2]int{9, 5}, dstCF: [2]int{9, 5},
 		graphics: map[string]bool{}, formats: map[string]bool{},
 	}
-	return r.run(), r.warnings, nil
+	out := r.run()
+	if r.overBudget {
+		return nil, r.warnings, ErrRescaleTooLarge
+	}
+	return out, r.warnings, nil
+}
+
+// ErrRescaleTooLarge is returned by Rescale when the graphics in the ZPL add
+// up to more than RescalePixelBudget pixels to decode and resample.
+var ErrRescaleTooLarge = errors.New("zpl: graphics too large to rescale")
+
+// RescalePixelBudget bounds the pixels one Rescale call decodes and writes
+// across all its graphics, so a small job of compressed graphics cannot run
+// for seconds: it is one label's worth, bitmap.MaxPixels.
+const RescalePixelBudget = bitmap.MaxPixels
+
+// spend charges n pixels to the call's budget, reporting whether it holds.
+func (r *rescaler) spend(n int) bool {
+	if r.overBudget || n < 0 || r.spent+n > RescalePixelBudget {
+		r.overBudget = true
+		return false
+	}
+	r.spent += n
+	return true
 }
 
 // maxRelErr is the relative size error above which a rounded or matched
@@ -82,6 +106,9 @@ type rescaler struct {
 	warnings []Warning
 
 	physical bool // ^MU I/M in effect: measurements are not in dots
+
+	spent      int  // pixels decoded and resampled so far
+	overBudget bool // RescalePixelBudget was exceeded
 
 	// Font and barcode defaults, as set by the source so far.
 	cfSized      bool
@@ -607,7 +634,7 @@ func (r *rescaler) resample(raw []byte, rowBytes int) ([]byte, int) {
 	w := rowBytes * 8
 	nw, nh := max(r.scale(w), 1), max(r.scale(h), 1)
 	nrow := (nw + 7) / 8
-	if !bitmap.Fits(nw, nh) {
+	if !bitmap.Fits(nw, nh) || !r.spend(w*h+nw*nh) {
 		return nil, 0
 	}
 	out := make([]byte, nrow*nh)
@@ -848,7 +875,7 @@ func (r *rescaler) resampleImage(img image.Image) ([]byte, bool) {
 	b := img.Bounds()
 	w, h := b.Dx(), b.Dy()
 	nw, nh := max(r.scale(w), 1), max(r.scale(h), 1)
-	if !bitmap.Fits(nw, nh) || w == 0 || h == 0 {
+	if !bitmap.Fits(nw, nh) || w == 0 || h == 0 || !r.spend(w*h+nw*nh) {
 		return nil, false
 	}
 	out := image.NewGray(image.Rect(0, 0, nw, nh))
