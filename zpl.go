@@ -51,6 +51,10 @@ type Options struct {
 	// MaxPixels limits the total size of the images Render and RenderPNG
 	// return (default DefaultMaxPixels). RenderEach is not limited.
 	MaxPixels int
+	// Rotation turns every rendered label clockwise by 0, 90, 180 or 270
+	// degrees, like Labelary's X-Rotation header. 90 and 270 swap the
+	// image's width and height. Any other value is ErrInvalidRotation.
+	Rotation int
 }
 
 // DefaultMaxPixels is the default Options.MaxPixels: 256 megapixels, about
@@ -63,6 +67,9 @@ var (
 	ErrTooMuchOutput = errors.New("zpl: rendered output exceeds Options.MaxPixels")
 	// ErrLabelTooLarge is returned when a single label exceeds 64 megapixels.
 	ErrLabelTooLarge = engine.ErrLabelTooLarge
+	// ErrInvalidRotation is returned when Options.Rotation is not 0, 90,
+	// 180 or 270.
+	ErrInvalidRotation = errors.New("zpl: Options.Rotation must be 0, 90, 180 or 270")
 )
 
 // Warning reports something that was accepted but could not be rendered
@@ -81,10 +88,14 @@ type Printer struct {
 	p         *engine.Printer
 	maxPixels int
 	pngLevel  PNGCompression
+	rotation  bitmap.Rotation
 }
 
 // NewPrinter returns a printer with power-up defaults.
 func NewPrinter(o Options) (*Printer, error) {
+	if o.Rotation < 0 || o.Rotation >= 360 || o.Rotation%90 != 0 {
+		return nil, fmt.Errorf("%w (got %d)", ErrInvalidRotation, o.Rotation)
+	}
 	eo := engine.Options{
 		DPMM:          o.DPMM,
 		Now:           o.Now,
@@ -112,7 +123,7 @@ func NewPrinter(o Options) (*Printer, error) {
 	if maxPixels <= 0 {
 		maxPixels = DefaultMaxPixels
 	}
-	return &Printer{p: p, maxPixels: maxPixels, pngLevel: o.PNGCompression}, nil
+	return &Printer{p: p, maxPixels: maxPixels, pngLevel: o.PNGCompression, rotation: bitmap.Rotation(o.Rotation / 90)}, nil
 }
 
 // Render interprets ZPL from r and returns one image per printed label.
@@ -146,7 +157,7 @@ func (p *Printer) RenderEach(r io.Reader, fn func(image.Image) error) ([]Warning
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.p.Run(src, func(b *bitmap.Bitmap) error { return fn(b.Image()) })
+	return p.p.Run(src, func(b *bitmap.Bitmap) error { return fn(b.Rotate(p.rotation).Image()) })
 }
 
 // RenderPNG is like Render but returns PNG-encoded images.
