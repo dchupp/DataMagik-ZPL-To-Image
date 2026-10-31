@@ -6,6 +6,8 @@ change the API.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-31
+
 ### Added
 - `barcode` package: `Encode(symbology, data, Options) (*image.Gray, error)`
   draws one symbol (bars only, one pixel per module, no quiet zone) with
@@ -25,30 +27,9 @@ change the API.
   them, with parameters, field data and exact byte spans in the source.
 
 ### Changed
-- Further behaviour measured on a ZD420; these symbologies now match its
-  output pixel for pixel:
-  - CODABLOCK: row height includes the one-module separator.
-  - `^BR`: data in parentheses is encoded as literal text (DataBar Expanded,
-    composite GS1-128 and 2D components). Composite symbols start 7 or 10
-    modules right of the origin. UPC/EAN composites have fixed bar heights
-    and a 6-module separator. Composite Code 128 prefers subset A and drops
-    the linkage character when there is no 2D part.
-  - PDF417/MicroPDF417: Numeric Compaction from 14 digits (all-digit data
-    sooner), punctuation shifts, and MicroPDF417 Zebra padding.
-  - TLC39: no flag without a 2D part, `*` field separators, the printer's
-    MicroPDF417 sizing, a one-module gap and the taller flag.
-- The printer harness takes `ZPL_PRINTER_ONLY` to run selected fixtures.
-- Labels and field masks are packed one bit per pixel. Rendering is about
-  40% faster, uses about 80% less memory (450 KB for a 4×6 label at
-  8 dots/mm) and scales across cores. Rendered images are now a read-only
-  1-bit `image.PalettedImage` instead of `*image.Paletted`; code that
-  type-asserted `*image.Paletted` should use the `image.Image` interface.
-- MaxiCode hexagons and finder rings are filled a row span at a time.
 - Symbol drawing (bars, matrices, postal bars, MaxiCode, TLC39, composites)
   moved from the engine to `internal/barcode/raster`, shared with the
   `barcode` package; rendered output is unchanged.
-- Font caches are read without locking, and the bitmap-font glyph cache is
-  bounded.
 
 ### Fixed
 - Divergences from a ZD420 (300 dpi) found by the printer harness, now
@@ -78,6 +59,39 @@ change the API.
   - CODABLOCK A: one row is not padded to the column count and its
     separators reach one module past the stop character; rows are
     h − module dots high (not rounded down to whole modules).
+
+### Security
+- PNG and BMP downloads (`~DY`, `~DG`) and `Rescale` check an image's
+  declared size before decoding it; a few bytes of PNG could declare
+  gigapixels.
+- `Rescale` spends at most `RescalePixelBudget` pixels on graphics per call
+  and returns `ErrRescaleTooLarge` beyond it, so a small job of compressed
+  graphics cannot run for seconds.
+
+## [0.2.0] - 2026-10-31
+
+### Changed
+- Further behaviour measured on a ZD420; these symbologies now match its
+  output pixel for pixel:
+  - CODABLOCK: row height includes the one-module separator.
+  - `^BR`: data in parentheses is encoded as literal text (DataBar Expanded,
+    composite GS1-128 and 2D components). Composite symbols start 7 or 10
+    modules right of the origin. UPC/EAN composites have fixed bar heights
+    and a 6-module separator. Composite Code 128 prefers subset A and drops
+    the linkage character when there is no 2D part.
+  - PDF417/MicroPDF417: Numeric Compaction from 14 digits (all-digit data
+    sooner), punctuation shifts, and MicroPDF417 Zebra padding.
+  - TLC39: no flag without a 2D part, `*` field separators, the printer's
+    MicroPDF417 sizing, a one-module gap and the taller flag.
+- The printer harness takes `ZPL_PRINTER_ONLY` to run selected fixtures.
+- Labels and field masks are packed one bit per pixel. Rendering is about
+  40% faster, uses about 80% less memory (450 KB for a 4×6 label at
+  8 dots/mm) and scales across cores. Rendered images are now a read-only
+  1-bit `image.PalettedImage` instead of `*image.Paletted`; code that
+  type-asserted `*image.Paletted` should use the `image.Image` interface.
+- MaxiCode hexagons and finder rings are filled a row span at a time.
+- Font caches are read without locking, and the bitmap-font glyph cache is
+  bounded.
 
 ### Known limitations
 - A ZD420 misencodes unbracketed DataBar Expanded data with AIs 01 and
@@ -155,5 +169,6 @@ First release.
 - `^GF`/`~DY` format C (AR-compressed) and `~DS` Intellifont downloads are
   proprietary and not decoded.
 
-[Unreleased]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dchupp/DataMagik-ZPL-To-Image/releases/tag/v0.1.0
