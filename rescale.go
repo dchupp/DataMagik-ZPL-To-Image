@@ -119,6 +119,7 @@ type rescaler struct {
 
 	// The current field.
 	fieldFont, fieldBarcode bool
+	fieldRFID               bool // the field is an ^RF tag write
 
 	format, control byte // current prefixes, which rewritten text must not contain
 
@@ -254,10 +255,14 @@ func (r *rescaler) command(c lexer.Command) []byte {
 		r.units(c)
 		return nil
 	case "^FS":
-		r.fieldFont, r.fieldBarcode = false, false
+		r.fieldFont, r.fieldBarcode, r.fieldRFID = false, false, false
+		return nil
+	case "^RF":
+		// Its ^FD is the tag's data, not printed text: no font to scale.
+		r.fieldRFID = true
 		return nil
 	case "^FD", "^FV":
-		if !r.fieldFont && !r.fieldBarcode && !r.cfSized && !r.physical {
+		if !r.fieldFont && !r.fieldBarcode && !r.fieldRFID && !r.cfSized && !r.physical {
 			r.warn(c, "text uses the power-up default font size (^CF A,9,5, in dots), which cannot be rescaled; give the field a ^A size or set ^CF")
 		}
 		return nil

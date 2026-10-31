@@ -6,6 +6,12 @@ change the API.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-31
+
+### Fixed
+- `Rescale` no longer warns that an `^RF` tag write's `^FD` uses the
+  power-up font: it is tag data, not printed text.
+
 ## [0.3.1] - 2026-10-31
 
 ### Fixed

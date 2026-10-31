@@ -425,3 +425,20 @@ func TestRescale_GraphicsBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// An ^RF write's ^FD is the tag's data: it has no font, so no font warning.
+func TestRescale_RFIDDataIsNotText(t *testing.T) {
+	_, warnings, err := Rescale([]byte("^XA^RS8^RFW,H,,,E^FD3000ABCD^FS^FO10,10^A0N,30^FDtext^FS^XZ"), 8, 12)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range warnings {
+		if strings.Contains(w.Message, "font") {
+			t.Fatalf("unexpected font warning: %v", w)
+		}
+	}
+	// A real text field without a size still warns.
+	if _, warnings, _ := Rescale([]byte("^XA^FO10,10^FDtext^FS^XZ"), 8, 12); len(warnings) == 0 {
+		t.Fatal("text with the power-up font should still warn")
+	}
+}
