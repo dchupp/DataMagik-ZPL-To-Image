@@ -11,6 +11,7 @@ import (
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/datamatrix"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/maxicode"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/qr"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/raster"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/font"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/lexer"
@@ -116,30 +117,7 @@ func (f *format) defaultMagnification() int {
 // matrixShape scales a module matrix: modules are mw dots wide and each
 // row unit rh dots tall.
 func matrixShape(m barcode.Matrix, mw, rh int) shape {
-	mw, rh = max(mw, 1), max(rh, 1)
-	h := 0
-	for y := range m.Rows {
-		h += rowUnits(m, y) * rh
-	}
-	bm := bitmap.New(m.Width()*mw, h)
-	top := 0
-	for y, row := range m.Rows {
-		rhy := rowUnits(m, y) * rh
-		for x, dark := range row {
-			if dark {
-				bm.FillRect(x*mw, top, mw, rhy, true)
-			}
-		}
-		top += rhy
-	}
-	return boxShape(bm)
-}
-
-func rowUnits(m barcode.Matrix, y int) int {
-	if m.RowHeights == nil {
-		return 1
-	}
-	return m.RowHeights[y]
+	return boxShape(raster.Matrix(m, mw, rh))
 }
 
 // boxShape wraps a bitmap whose box is the whole bitmap and whose typeset
@@ -310,93 +288,5 @@ func (f *format) maxiShape(ps params, data []byte) (shape, error) {
 	// i.e. the row pitch is the column pitch times √3/2, rounded.
 	const widthMM = 25.0
 	col := max(math.Round(widthMM/maxicode.SymbolWidth*float64(f.dpmm())), 3) // dots per column (W)
-	row := max(math.Round(col*maxicode.RowPitch), 2)                          // dots per row
-	center := func(x, y int) (float64, float64) {
-		cx, _ := maxicode.ModuleCenter(x, y)
-		return cx * col, float64(y)*row + maxicode.HexHeight/2*col
-	}
-	w := int(math.Ceil(maxicode.SymbolWidth * col))
-	h := int(math.Ceil(float64(maxicode.Rows-1)*row + maxicode.HexHeight*col))
-	bm := bitmap.New(w, h)
-	r := maxicode.HexHeight / 2 * col // circumradius in dots
-	for y, cells := range m.Rows {
-		for x, dark := range cells {
-			if dark {
-				cx, cy := center(x, y)
-				fillHexagon(bm, cx, cy, r*0.92)
-			}
-		}
-	}
-	fcx, fcy := center(14, 16)
-	for _, ring := range maxicode.FinderRings() {
-		fillRing(bm, fcx, fcy, ring[0]/2*col, ring[1]/2*col)
-	}
-	return boxShape(bm), nil
-}
-
-// fillHexagon paints a pointy-top regular hexagon with circumradius r.
-func fillHexagon(bm *bitmap.Bitmap, cx, cy, r float64) {
-	half := r * math.Sqrt(3) / 2
-	for y := int(cy - r); y <= int(cy+r)+1; y++ {
-		py := math.Abs(float64(y) + 0.5 - cy)
-		if py > r {
-			continue
-		}
-		m := min(half, math.Sqrt(3)*(r-py))
-		fillSpan(bm, y, cx-m, cx+m, func(x int) bool {
-			return hexInside(math.Abs(float64(x)+0.5-cx), py, r)
-		})
-	}
-}
-
-// hexInside tests a point (folded to the first quadrant) against a
-// pointy-top hexagon of circumradius r.
-func hexInside(px, py, r float64) bool {
-	half := r * math.Sqrt(3) / 2
-	return px <= half && py <= r && py <= r-px/math.Sqrt(3)
-}
-
-// fillRing paints the pixels whose centres lie between radii rin and rout
-// of (cx, cy).
-func fillRing(bm *bitmap.Bitmap, cx, cy, rin, rout float64) {
-	for y := int(cy - rout); y <= int(cy+rout)+1; y++ {
-		dy := float64(y) + 0.5 - cy
-		if dy*dy > rout*rout {
-			continue
-		}
-		in := func(x int) bool {
-			dx := float64(x) + 0.5 - cx
-			d := math.Sqrt(dx*dx + dy*dy)
-			return d >= rin && d <= rout
-		}
-		mo := math.Sqrt(rout*rout - dy*dy)
-		if dy*dy >= rin*rin {
-			fillSpan(bm, y, cx-mo, cx+mo, in)
-			continue
-		}
-		mi := math.Sqrt(rin*rin - dy*dy)
-		fillSpan(bm, y, cx-mo, cx-mi, in)
-		fillSpan(bm, y, cx+mi, cx+mo, in)
-	}
-}
-
-// fillSpan fills the run of pixels in row y whose centres lie in [a, b],
-// correcting the computed ends with the exact per-pixel test in.
-func fillSpan(bm *bitmap.Bitmap, y int, a, b float64, in func(x int) bool) {
-	lo, hi := int(math.Ceil(a-0.5)), int(math.Floor(b-0.5))
-	for in(lo - 1) {
-		lo--
-	}
-	for lo <= hi && !in(lo) {
-		lo++
-	}
-	for in(hi + 1) {
-		hi++
-	}
-	for hi >= lo && !in(hi) {
-		hi--
-	}
-	if lo <= hi {
-		bm.FillRect(lo, y, hi-lo+1, 1, true)
-	}
+	return boxShape(raster.MaxiCode(m, col)), nil
 }

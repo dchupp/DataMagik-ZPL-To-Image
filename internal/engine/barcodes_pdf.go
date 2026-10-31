@@ -6,14 +6,10 @@ import (
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/codablock"
-	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code128"
-	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/composite"
-	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/databar"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/micropdf"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/pdf417"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/raster"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/tlc39"
-	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/upcean"
-	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // pdfFamily handles ^B7, ^BF, ^BB and ^BT.
@@ -95,30 +91,6 @@ func (f *format) pdfFamily(fld *field, st fieldState, b *barcodeSpec, data []byt
 	return nil, errNotImplemented
 }
 
-// barsBitmap draws a linear symbol's bars.
-func barsBitmap(l barcode.Linear, module int, ratio float64, height int) *bitmap.Bitmap {
-	wide := max(int(float64(module)*ratio+0.5), module+1)
-	ew := func(e int) int {
-		if l.Ratio && e == 2 {
-			return wide
-		}
-		return e * module
-	}
-	w := 0
-	for _, e := range l.Elements {
-		w += ew(e)
-	}
-	bm := bitmap.New(w, height)
-	x := 0
-	for i, e := range l.Elements {
-		if i%2 == 0 {
-			bm.FillRect(x, 0, ew(e), height, true)
-		}
-		x += ew(e)
-	}
-	return bm
-}
-
 // tlc39 renders ^BT: Code 39 with a MicroPDF417 above it and a linkage flag.
 func (f *format) tlc39(ps params, data []byte) ([]shape, error) {
 	hiRes := f.dpmm() >= 24
@@ -134,29 +106,11 @@ func (f *format) tlc39(ps params, data []byte) ([]shape, error) {
 	if err != nil {
 		return nil, err
 	}
-	lin := barsBitmap(sym.Linear, w1, r1, h1)
-	var micro *bitmap.Bitmap
-	if sym.MicroPDF != nil {
-		micro = matrixShape(*sym.MicroPDF, w2, h2).mask
+	bm, pad := raster.TLC39(sym, w1, r1, h1, w2, h2)
+	if sym.MicroPDF == nil {
+		return []shape{boxShape(bm)}, nil
 	}
-	// The "T" linkage flag only marks a 2D part: with just the ECI number a
-	// ZD420 prints the Code 39 symbol alone.
-	if micro == nil {
-		return []shape{boxShape(lin)}, nil
-	}
-	// The MicroPDF417 top is one dot below the field origin (as on a
-	// ZD420); the flag, centred on the bars, may reach above it.
-	ext := tlc39.FlagExtension(h1, r1)
-	flag := barsBitmap(sym.Flag, w1, r1, h1+2*ext)
-	linY := micro.H + w1
-	pad := max(ext-linY, 0)
-	flagX := lin.W + tlc39.FlagGap*w1
-	w := max(flagX+flag.W, tlc39.MicroPDFOffset*w1+micro.W)
-	out := bitmap.New(w, pad+linY+h1+ext)
-	out.Draw(micro, tlc39.MicroPDFOffset*w1, pad, bitmap.Black)
-	out.Draw(lin, 0, pad+linY, bitmap.Black)
-	out.Draw(flag, flagX, pad+linY-ext, bitmap.Black)
-	s := boxShape(out)
+	s := boxShape(bm)
 	s.box.Min.Y = pad - 1
 	return []shape{s}, nil
 }
@@ -168,128 +122,19 @@ func (f *format) tlc39(ps params, data []byte) ([]shape, error) {
 // 2D component overhangs it on the left; UPC/EAN bars ignore the height e
 // (74 modules, 60 for EAN-8) and are separated from the 2D component by
 // three 2-module rows marking the outer guard bars.
-func (f *format) composite(fld *field, st fieldState, ps params, typ, mag, sepH int, data string) ([]shape, error) {
-	linData, ccData, _ := databar.SplitComposite(data)
-	// The linear height e is in modules of the magnification.
-	height := f.fit(max(ps.int(4, 25), 1)*mag, 1)
-	var l barcode.Linear
-	var err error
-	var kind composite.Linear
-	ccType := composite.Auto
-	lead := 7 // modules between the field origin and the linear symbol
-	switch typ {
-	case 7:
-		kind = composite.UPCA
-		l, err = upcean.EncodeUPCA(linData, upcean.UPCOptions{PrintCheckDigit: true})
-	case 8:
-		kind = composite.UPCE
-		l, err = upcean.EncodeUPCE(linData, upcean.UPCOptions{PrintCheckDigit: true})
-	case 9:
-		kind = composite.EAN13
-		l, err = upcean.EncodeEAN13(linData)
-	case 10:
-		kind = composite.EAN8
-		l, err = upcean.EncodeEAN8(linData)
-	case 11, 12:
-		kind = composite.GS1128
-		lead = 10
-		if typ == 12 {
-			ccType = composite.CCC
-		}
-		link := code128.LinkNone
-		switch {
-		case ccData != "" && typ == 12:
-			link = code128.LinkC
-		case ccData != "":
-			link = code128.LinkAB
-		}
-		l, err = code128.EncodeComposite(linData, link)
-	}
+func (f *format) composite(typ, mag, sepH int, ps params, data string) ([]shape, error) {
+	bm, err := raster.Composite(raster.CompositeLinear(typ), data, raster.CompositeOptions{
+		Mag:       mag,
+		SepHeight: sepH,
+		// The linear height e is in modules of the magnification.
+		Height:           f.fit(max(ps.int(4, 25), 1)*mag, 1),
+		UPCHeight:        f.fit(74*mag, 1),
+		EAN8Height:       f.fit(60*mag, 1),
+		Lead:             true,
+		ZebraParentheses: true,
+	})
 	if err != nil {
 		return nil, err
 	}
-	linW := l.Width(2)
-	var sep [][]bool
-	if kind == composite.GS1128 {
-		// Separator: the inverse of the linear bars, d modules high.
-		row := make([]bool, linW)
-		x := 0
-		for i, e := range l.Elements {
-			for k := 0; k < e && x+k < linW; k++ {
-				row[x+k] = i%2 == 1
-			}
-			x += e
-		}
-		for range sepH {
-			sep = append(sep, row)
-		}
-	} else {
-		height = f.fit(74*mag, 1)
-		if kind == composite.EAN8 {
-			height = f.fit(60*mag, 1)
-		}
-		// Separator rows span modules -1 to linW: the first and last bar
-		// modules, then one module further out, then the first and last.
-		inner := make([]bool, linW+2)
-		inner[1], inner[linW] = true, true
-		outer := make([]bool, linW+2)
-		outer[0], outer[linW+1] = true, true
-		sep = [][]bool{inner, inner, outer, outer, inner, inner}
-	}
-	bars := barsBitmap(l, mag, 2, height)
-	if ccData == "" {
-		out := bitmap.New(lead*mag+bars.W, bars.H)
-		out.Draw(bars, lead*mag, 0, bitmap.Black)
-		return []shape{boxShape(out)}, nil
-	}
-	cc, err := composite.Encode(ccData, composite.Options{Linear: kind, Type: ccType, LinearWidth: linW, ZebraParentheses: true})
-	if err != nil {
-		return nil, err
-	}
-	sepX := 0
-	if kind != composite.GS1128 {
-		sepX = -1
-	}
-	return []shape{assembleComposite(cc, sep, sepX, bars, lead, mag)}, nil
-}
-
-// compositeAbove stacks a CC-A/B component above a GS1 DataBar symbol.
-func (f *format) compositeAbove(fld *field, st fieldState, m barcode.Matrix, sep []bool, ccData string, t databar.Type, mag int) ([]shape, error) {
-	kind := map[databar.Type]composite.Linear{
-		databar.TypeOmnidirectional:        composite.DataBar14,
-		databar.TypeTruncated:              composite.DataBar14,
-		databar.TypeStacked:                composite.DataBarStacked,
-		databar.TypeStackedOmnidirectional: composite.DataBarStacked,
-		databar.TypeLimited:                composite.DataBarLimited,
-		databar.TypeExpanded:               composite.DataBarExpanded,
-	}[t]
-	cc, err := composite.Encode(ccData, composite.Options{Linear: kind, LinearWidth: m.Width(), ZebraParentheses: true})
-	if err != nil {
-		return nil, err
-	}
-	return []shape{assembleComposite(cc, [][]bool{sep}, 0, matrixShape(m, mag, mag).mask, 0, mag)}, nil
-}
-
-// assembleComposite draws the 2D component, the separator rows (one module
-// high each, starting at module sepX of the linear symbol) and the linear
-// symbol together. The linear symbol starts lead modules right of the
-// origin, or further so that the 2D component starts at least one module
-// right of it, as on a ZD420.
-func assembleComposite(cc composite.Component, sep [][]bool, sepX int, linear *bitmap.Bitmap, lead, mag int) shape {
-	comp := matrixShape(cc.Matrix, mag, mag).mask
-	linX := max(lead, 1-cc.Offset) * mag
-	ccX := linX + cc.Offset*mag
-	w := max(linX+linear.W, ccX+comp.W)
-	sepY := comp.H
-	out := bitmap.New(w, sepY+len(sep)*mag+linear.H)
-	out.Draw(comp, ccX, 0, bitmap.Black)
-	for r, row := range sep {
-		for i, dark := range row {
-			if dark {
-				out.FillRect(linX+(sepX+i)*mag, sepY+r*mag, mag, mag, true)
-			}
-		}
-	}
-	out.Draw(linear, linX, sepY+len(sep)*mag, bitmap.Black)
-	return boxShape(out)
+	return []shape{boxShape(bm)}, nil
 }

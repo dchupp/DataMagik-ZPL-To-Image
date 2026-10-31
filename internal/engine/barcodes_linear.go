@@ -16,6 +16,7 @@ import (
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/msi"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/plessey"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/postal"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/raster"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/twoof5"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/upcean"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
@@ -317,27 +318,10 @@ func (f *format) postalShape(fld *field, st fieldState, pc barcode.Postal, p lin
 	m := st.by.module
 	pitch := 2 * m
 	if !imb {
-		pitch = max(int(float64(m)*st.by.ratio+0.5), m+1) + m
+		pitch = raster.WideWidth(m, st.by.ratio) + m
 	}
 	h := p.height
-	bm := bitmap.New(max(len(pc.Bars)*pitch-(pitch-m), 1), h)
-	for i, b := range pc.Bars {
-		x := i * pitch
-		top, bot := 0, h
-		switch b {
-		case barcode.BarTracker:
-			if imb {
-				top, bot = h/3, h-h/3
-			} else {
-				top = h - h*2/5
-			}
-		case barcode.BarAscender:
-			bot = h - h/3
-		case barcode.BarDescender:
-			top = h / 3
-		}
-		bm.FillRect(x, top, m, bot-top, true)
-	}
+	bm := raster.Postal(pc, m, pitch, h, imb)
 	if !p.hri || pc.Text == "" {
 		return boxShape(bm)
 	}
@@ -435,22 +419,11 @@ func (f *format) dataBar(fld *field, st fieldState, ps params, data string) ([]s
 	}
 	sepH := clamp(ps.int(3, 1), 1, 2)
 	if typ >= 7 {
-		return f.composite(fld, st, ps, typ, mag, sepH, data)
+		return f.composite(typ, mag, sepH, ps, data)
 	}
-	linear, cc, hasCC := databar.SplitComposite(data)
-	sym, err := databar.Encode(databar.Type(typ), linear, databar.Options{Linkage: hasCC, Segments: ps.int(5, 22), ZebraParentheses: true})
+	bm, err := raster.DataBar(databar.Type(typ), data, mag, sepH, ps.int(5, 22), true)
 	if err != nil {
 		return nil, err
 	}
-	m := sym.Matrix
-	if sepH > 1 {
-		m.RowHeights = append([]int(nil), m.RowHeights...)
-		for _, i := range sym.SeparatorRows {
-			m.RowHeights[i] *= sepH
-		}
-	}
-	if hasCC {
-		return f.compositeAbove(fld, st, m, sym.CompositeSeparator, cc, databar.Type(typ), mag)
-	}
-	return []shape{matrixShape(m, mag, mag)}, nil
+	return []shape{boxShape(bm)}, nil
 }
