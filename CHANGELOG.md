@@ -6,6 +6,8 @@ change the API.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-31
+
 ### Changed
 - Further behaviour measured on a ZD420; these symbologies now match its
   output pixel for pixel:
@@ -105,5 +107,6 @@ First release.
 - `^GF`/`~DY` format C (AR-compressed) and `~DS` Intellifont downloads are
   proprietary and not decoded.
 
-[Unreleased]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dchupp/DataMagik-ZPL-To-Image/releases/tag/v0.1.0
