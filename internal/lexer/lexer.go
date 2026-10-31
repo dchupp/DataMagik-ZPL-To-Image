@@ -27,6 +27,12 @@ type Command struct {
 	Delim byte
 	// Offset is the byte offset of the prefix in the input.
 	Offset int
+	// ParamStart is the byte offset just after the command name, where the
+	// raw parameter text begins (for ^A, at the font name).
+	ParamStart int
+	// End is the byte offset just past the command: src[Offset:End] is the
+	// command exactly as it appeared in the input, CR/LF included.
+	End int
 }
 
 // Key returns the canonical command key, e.g. "^FO" or "~DG".
@@ -64,6 +70,14 @@ func (l *Lexer) isPrefix(b byte) bool { return b == l.format || b == l.control }
 // Next returns the next command. ok is false at end of input. Bytes outside
 // commands (before the first prefix) are skipped.
 func (l *Lexer) Next() (cmd Command, ok bool) {
+	cmd, ok = l.next()
+	if ok {
+		cmd.End = l.pos
+	}
+	return cmd, ok
+}
+
+func (l *Lexer) next() (cmd Command, ok bool) {
 	for l.pos < len(l.src) && !l.isPrefix(l.src[l.pos]) {
 		l.pos++
 	}
@@ -74,7 +88,7 @@ func (l *Lexer) Next() (cmd Command, ok bool) {
 	control := l.src[l.pos] == l.control && l.control != l.format
 	l.pos++
 	name := l.readName()
-	cmd = Command{Control: control, Name: name, Delim: l.delim, Offset: start}
+	cmd = Command{Control: control, Name: name, Delim: l.delim, Offset: start, ParamStart: l.pos}
 
 	switch name {
 	case "CC", "CT", "CD":

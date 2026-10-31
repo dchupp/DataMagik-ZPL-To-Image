@@ -6,6 +6,16 @@ change the API.
 
 ## [Unreleased]
 
+### Added
+- `Rescale` rewrites ZPL for another print density (6, 8, 12 or 24 dots/mm)
+  so labels print at the same physical size: every dot-valued parameter is
+  scaled, `^GF`/`~DG`/`~DY` graphics are resampled and re-encoded, and
+  everything else is copied byte for byte. Anything that cannot be scaled
+  exactly (bitmap font magnifications, module widths, objects stored on the
+  printer, `^MU` units) is reported as a `Warning`.
+- `Tokenize` returns the commands of a ZPL stream as the renderer reads
+  them, with parameters, field data and exact byte spans in the source.
+
 ### Changed
 - Further behaviour measured on a ZD420; these symbologies now match its
   output pixel for pixel:

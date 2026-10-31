@@ -52,3 +52,23 @@ func TestBinaryDY(t *testing.T) {
 		t.Errorf("got %q then %s", cmds[0].Params, cmds[1].Key())
 	}
 }
+
+func TestOffsets(t *testing.T) {
+	src := []byte("junk^XA\r\n^FO10,\r\n20^A0N,30^GFB,2,2,1,^~^FS  ~DYR:X,B,T,1,0,^\n^XZ")
+	cmds := All(src)
+	want := []string{"^XA\r\n", "^FO10,\r\n20", "^A0N,30", "^GFB,2,2,1,^~", "^FS  ", "~DYR:X,B,T,1,0,^", "^XZ"}
+	if len(cmds) != len(want) {
+		t.Fatalf("got %d commands", len(cmds))
+	}
+	for i, c := range cmds {
+		if got := string(src[c.Offset:c.End]); got != want[i] {
+			t.Errorf("command %d = %q, want %q", i, got, want[i])
+		}
+	}
+	if a := cmds[2]; string(src[a.ParamStart:a.End]) != "0N,30" {
+		t.Errorf("^A params start at %q", src[a.ParamStart:a.End])
+	}
+	if fo := cmds[1]; string(src[fo.ParamStart:fo.End]) != "10,\r\n20" {
+		t.Errorf("^FO params start at %q", src[fo.ParamStart:fo.End])
+	}
+}
