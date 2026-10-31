@@ -1,13 +1,9 @@
 package engine
 
 import (
-	"bytes"
 	"image"
-	"image/png"
 	"strconv"
 	"strings"
-
-	"golang.org/x/image/bmp"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/compress"
@@ -72,14 +68,14 @@ func cmdDY(f *format, c lexer.Command, _ params) error {
 
 	switch ext {
 	case "P", "PNG":
-		img, err := png.Decode(bytes.NewReader(raw))
+		img, err := bitmap.DecodePNG(raw)
 		if err != nil {
 			f.pr.warn(c, "PNG: %v", err)
 			return nil
 		}
 		f.pr.st.put(withExt(name, "PNG"), "PNG", &object{graphic: bitmap.FromImage(img), raw: raw})
 	case "B", "BMP":
-		img, err := bmp.Decode(bytes.NewReader(raw))
+		img, err := bitmap.DecodeBMP(raw)
 		if err != nil {
 			f.pr.warn(c, "BMP: %v", err)
 			return nil

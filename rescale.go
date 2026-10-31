@@ -810,7 +810,7 @@ func (r *rescaler) downloadObject(c lexer.Command) []byte {
 				raw = compress.DecodeHex(t)
 			}
 		}
-		img, derr := png.Decode(bytes.NewReader(raw))
+		img, derr := bitmap.DecodePNG(raw)
 		if err != nil || derr != nil {
 			r.warn(c, "PNG not rescaled: %v", firstErr(err, derr))
 			return nil
