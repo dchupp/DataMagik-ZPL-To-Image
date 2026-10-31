@@ -12,6 +12,7 @@ pngs, warnings, err := zpl.RenderPNG(strings.NewReader(`^XA
 ^XZ`), zpl.Options{DPMM: 8, LabelWidth: 4, LabelHeight: 6})
 ```
 
+- A `Printer` is safe for concurrent use; it runs one job at a time like a real printer, so use several `Printer`s to render in parallel.
 - One image per `^XA…^XZ` format (or one per `^PQ` copy with `ExpandCopies`).
 - `Render`/`RenderPNG` hold all images in memory and stop with `ErrTooMuchOutput` beyond `Options.MaxPixels` (default 256 Mpx). `Printer.RenderEach` streams labels to a callback with no total limit; the CLI uses it.
 - Untrusted input is bounded:
@@ -40,9 +41,10 @@ Every barcode symbology is implemented here. `internal/verify` is a separate mod
 
 `^PA` turns on Zebra's advanced text layout: b = bidirectional ordering, c = character shaping, d = OpenType features. With it, Arabic and Hebrew are ordered right-to-left and joined, and Indic scripts form conjuncts and reorder vowel signs. Shaping applies to single-line fields and `^TB` blocks; `^FB` does not support complex text on Zebra printers either.
 
-The built-in look-alike fonts cover Latin, Greek and Cyrillic (the bitmap fonts also Hebrew). For other scripts, pass fonts that cover them as `Options.FallbackFonts`; they are tried in order for any character the selected ZPL font lacks. For Chinese, Japanese and Korean, import the optional `fonts/notocjk` package (Noto Sans CJK, SIL OFL, ~16 MB, only linked into programs that import it):
+The built-in look-alike fonts cover Latin, Greek and Cyrillic (the bitmap fonts also Hebrew). For other scripts, pass fonts that cover them as `Options.FallbackFonts`; they are tried in order for any character the selected ZPL font lacks. For Chinese, Japanese and Korean, add the optional `fonts/notocjk` module (Noto Sans CJK, SIL OFL, ~16 MB). It is a separate Go module, so the library's own download stays small:
 
 ```go
+// go get github.com/dchupp/DataMagik-ZPL-To-Image/fonts/notocjk
 import "github.com/dchupp/DataMagik-ZPL-To-Image/fonts/notocjk"
 
 opts := zpl.Options{FallbackFonts: [][]byte{notocjk.Regular}}
@@ -50,7 +52,7 @@ opts := zpl.Options{FallbackFonts: [][]byte{notocjk.Regular}}
 
 ## Performance
 
-A typical 4×6-inch shipping label (`testdata/samples/shipping_label.zpl`: text, boxes, MaxiCode, two Code 128s and a QR code) takes about 1.7 ms to render and 8 ms including PNG encoding, on a modern x86 core. Glyphs are cached per font, so a long-lived `Printer` gets faster as it warms up. Run `go test -bench . -run XXX .` to measure.
+A typical 4×6-inch shipping label (`testdata/samples/shipping_label.zpl`: text, boxes, MaxiCode, two Code 128s and a QR code) takes about 1.7 ms to render and 4 ms including PNG encoding, on a modern x86 core. Rendered labels use a dedicated 1-bit PNG encoder. Glyphs are cached per font, so a long-lived `Printer` gets faster as it warms up. Run `go test -bench . -run XXX .` to measure.
 
 ## Coverage
 

@@ -13,12 +13,15 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/engine"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/pngenc"
 )
 
 // Options configure rendering.
@@ -65,7 +68,14 @@ var (
 type Warning = engine.Warning
 
 // Printer is a virtual Zebra printer with persistent memory.
+//
+// A Printer is safe for concurrent use. Like a real printer it processes
+// one job at a time, so calls on the same Printer are serialised and see
+// each other's stored graphics, formats and settings in call order. For
+// parallel rendering use one Printer per goroutine (or a pool); separate
+// Printers share only immutable font data and caches.
 type Printer struct {
+	mu        sync.Mutex
 	p         *engine.Printer
 	maxPixels int
 }
@@ -122,11 +132,15 @@ func (p *Printer) Render(r io.Reader) ([]image.Image, []Warning, error) {
 
 // RenderEach interprets ZPL from r and calls fn with each label as soon as
 // it is rendered. An error from fn stops rendering and is returned.
+//
+// fn runs while the Printer is busy, so it must not call the same Printer.
 func (p *Printer) RenderEach(r io.Reader, fn func(image.Image) error) ([]Warning, error) {
 	src, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	return p.p.Run(src, func(b *bitmap.Bitmap) error { return fn(b.Image()) })
 }
 
@@ -144,14 +158,31 @@ func (p *Printer) RenderPNG(r io.Reader) ([][]byte, []Warning, error) {
 	return out, warnings, err
 }
 
-// EncodePNG encodes a rendered label as a compact 1-bit PNG.
+// EncodePNG encodes a rendered label as a compact 1-bit PNG. Images from
+// Render take a fast path; any other image is encoded with image/png.
 func EncodePNG(img image.Image) ([]byte, error) {
 	var buf bytes.Buffer
+	if p, ok := img.(*image.Paletted); ok && isLabelPalette(p.Palette) {
+		r := p.Rect
+		err := pngenc.Encode(&buf, p.Pix[p.PixOffset(r.Min.X, r.Min.Y):], r.Dx(), r.Dy(), p.Stride)
+		return buf.Bytes(), err
+	}
 	enc := png.Encoder{CompressionLevel: png.DefaultCompression}
 	if err := enc.Encode(&buf, img); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// isLabelPalette reports whether pal is the white/black palette of rendered
+// labels (index 0 white, 1 black).
+func isLabelPalette(pal color.Palette) bool {
+	if len(pal) != 2 {
+		return false
+	}
+	r0, g0, b0, _ := pal[0].RGBA()
+	r1, g1, b1, _ := pal[1].RGBA()
+	return r0 == 0xffff && g0 == 0xffff && b0 == 0xffff && r1 == 0 && g1 == 0 && b1 == 0
 }
 
 // Render renders ZPL with a fresh printer.

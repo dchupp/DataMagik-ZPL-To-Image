@@ -24,8 +24,9 @@ func Example() {
 
 // A Printer keeps its memory between calls, like a real printer: a logo
 // downloaded once with ~DG and a template stored with ^DF are reused by
-// later jobs. Keep one Printer per tenant or template set; a Printer is not
-// safe for concurrent use, so guard it or keep one per goroutine.
+// later jobs. Keep one Printer per tenant or template set. A Printer is safe
+// for concurrent use but runs one job at a time; use several Printers to
+// render in parallel.
 func ExamplePrinter() {
 	p, err := zpl.NewPrinter(zpl.Options{LabelWidth: 4, LabelHeight: 2})
 	if err != nil {
