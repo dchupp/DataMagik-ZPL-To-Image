@@ -315,7 +315,9 @@ func visualSegments(faces []*scalableFace, text []rune, useBidi bool) []segment 
 // levels differ (e.g. level-2 digits after Arabic followed by level-0
 // Latin), which loses the information rule L2 needs. Its per-character
 // levels are correct but unexported, so they are read with reflection; if
-// that field ever disappears the run levels are used instead.
+// that field ever disappears the run levels are used instead. Reported
+// upstream as https://github.com/go-text/typesetting/issues/306; drop this
+// workaround once Runs splits on level changes.
 func bidiLevels(text []rune) []int {
 	var p bidi.Paragraph
 	out := p.Segment(text, bidi.LeftToRight)
