@@ -131,6 +131,9 @@ func (r *rescaler) run() []byte {
 	out.Grow(len(r.src))
 	prev := 0
 	for _, c := range lexer.All(r.src) {
+		if r.overBudget {
+			return nil // Rescale fails; decoding the rest would only spend more
+		}
 		out.Write(r.src[prev:c.Offset])
 		params := r.command(c)
 		if params != nil && (bytes.IndexByte(params, r.format) >= 0 || bytes.IndexByte(params, r.control) >= 0) {

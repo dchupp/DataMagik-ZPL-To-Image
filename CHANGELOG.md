@@ -6,6 +6,12 @@ change the API.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-31
+
+### Fixed
+- `Rescale` stops at the first graphic over `RescalePixelBudget` instead of
+  decoding the rest before failing.
+
 ## [0.3.0] - 2026-10-31
 
 ### Added

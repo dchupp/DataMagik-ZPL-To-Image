@@ -415,7 +415,9 @@ func TestRescale_GraphicsBudget(t *testing.T) {
 	if !errors.Is(err, ErrRescaleTooLarge) {
 		t.Fatalf("err = %v, want ErrRescaleTooLarge", err)
 	}
-	if d := time.Since(start); d > 3*time.Second {
+	// It stops at the first graphic over budget (about 0.1 s); decoding all
+	// fifty took 21.7 s before the budget. Generous for -race on CI runners.
+	if d := time.Since(start); d > 10*time.Second {
 		t.Fatalf("took %v", d)
 	}
 	// One ordinary graphic is well inside the budget.
