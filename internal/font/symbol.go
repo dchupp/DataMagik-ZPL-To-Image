@@ -133,7 +133,7 @@ func stretchInk(src *bitmap.Bitmap, w, h int) *bitmap.Bitmap {
 	x0, y0, x1, y1 := src.W, src.H, -1, -1
 	for y := 0; y < src.H; y++ {
 		for x := 0; x < src.W; x++ {
-			if src.Pix[y*src.W+x] != 0 {
+			if src.Get(x, y) {
 				x0, y0 = min(x0, x), min(y0, y)
 				x1, y1 = max(x1, x), max(y1, y)
 			}
@@ -148,7 +148,7 @@ func stretchInk(src *bitmap.Bitmap, w, h int) *bitmap.Bitmap {
 		for x := 0; x < w; x++ {
 			sx := x0 + (2*x+1)*cw/(2*w)
 			sy := y0 + (2*y+1)*ch/(2*h)
-			out.Pix[y*w+x] = src.Pix[sy*src.W+sx]
+			out.Set(x, y, src.Get(sx, sy))
 		}
 	}
 	return out

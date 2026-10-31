@@ -338,12 +338,14 @@ func (f *format) maxiShape(ps params, data []byte) (shape, error) {
 func fillHexagon(bm *bitmap.Bitmap, cx, cy, r float64) {
 	half := r * math.Sqrt(3) / 2
 	for y := int(cy - r); y <= int(cy+r)+1; y++ {
-		for x := int(cx - half); x <= int(cx+half)+1; x++ {
-			px, py := math.Abs(float64(x)+0.5-cx), math.Abs(float64(y)+0.5-cy)
-			if hexInside(px, py, r) {
-				bm.Set(x, y, true)
-			}
+		py := math.Abs(float64(y) + 0.5 - cy)
+		if py > r {
+			continue
 		}
+		m := min(half, math.Sqrt(3)*(r-py))
+		fillSpan(bm, y, cx-m, cx+m, func(x int) bool {
+			return hexInside(math.Abs(float64(x)+0.5-cx), py, r)
+		})
 	}
 }
 
@@ -354,14 +356,47 @@ func hexInside(px, py, r float64) bool {
 	return px <= half && py <= r && py <= r-px/math.Sqrt(3)
 }
 
+// fillRing paints the pixels whose centres lie between radii rin and rout
+// of (cx, cy).
 func fillRing(bm *bitmap.Bitmap, cx, cy, rin, rout float64) {
 	for y := int(cy - rout); y <= int(cy+rout)+1; y++ {
-		for x := int(cx - rout); x <= int(cx+rout)+1; x++ {
-			dx, dy := float64(x)+0.5-cx, float64(y)+0.5-cy
-			d := math.Sqrt(dx*dx + dy*dy)
-			if d >= rin && d <= rout {
-				bm.Set(x, y, true)
-			}
+		dy := float64(y) + 0.5 - cy
+		if dy*dy > rout*rout {
+			continue
 		}
+		in := func(x int) bool {
+			dx := float64(x) + 0.5 - cx
+			d := math.Sqrt(dx*dx + dy*dy)
+			return d >= rin && d <= rout
+		}
+		mo := math.Sqrt(rout*rout - dy*dy)
+		if dy*dy >= rin*rin {
+			fillSpan(bm, y, cx-mo, cx+mo, in)
+			continue
+		}
+		mi := math.Sqrt(rin*rin - dy*dy)
+		fillSpan(bm, y, cx-mo, cx-mi, in)
+		fillSpan(bm, y, cx+mi, cx+mo, in)
+	}
+}
+
+// fillSpan fills the run of pixels in row y whose centres lie in [a, b],
+// correcting the computed ends with the exact per-pixel test in.
+func fillSpan(bm *bitmap.Bitmap, y int, a, b float64, in func(x int) bool) {
+	lo, hi := int(math.Ceil(a-0.5)), int(math.Floor(b-0.5))
+	for in(lo - 1) {
+		lo--
+	}
+	for lo <= hi && !in(lo) {
+		lo++
+	}
+	for in(hi + 1) {
+		hi++
+	}
+	for hi >= lo && !in(hi) {
+		hi--
+	}
+	if lo <= hi {
+		bm.FillRect(lo, y, hi-lo+1, 1, true)
 	}
 }

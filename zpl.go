@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/color"
 	"image/png"
 	"io"
 	"sync"
@@ -117,6 +116,8 @@ func NewPrinter(o Options) (*Printer, error) {
 }
 
 // Render interprets ZPL from r and returns one image per printed label.
+// Each image is a read-only 1-bit image.PalettedImage (index 0 white,
+// 1 black); draw it onto an image of your own to modify it.
 // All images are held in memory, so the total output is limited to
 // Options.MaxPixels; use RenderEach for unbounded output such as large ^PQ
 // runs with ExpandCopies.
@@ -194,9 +195,9 @@ func EncodePNG(img image.Image) ([]byte, error) { return EncodePNGWith(img, PNGF
 func EncodePNGWith(img image.Image, c PNGCompression) ([]byte, error) {
 	zl, pl := c.level()
 	var buf bytes.Buffer
-	if p, ok := img.(*image.Paletted); ok && isLabelPalette(p.Palette) {
-		r := p.Rect
-		err := pngenc.Encode(&buf, p.Pix[p.PixOffset(r.Min.X, r.Min.Y):], r.Dx(), r.Dy(), p.Stride, zl)
+	if m, ok := img.(*bitmap.Image); ok {
+		b := m.Bitmap()
+		err := pngenc.Encode(&buf, b.W, b.H, b.RowBytes, zl)
 		return buf.Bytes(), err
 	}
 	enc := png.Encoder{CompressionLevel: pl}
@@ -204,17 +205,6 @@ func EncodePNGWith(img image.Image, c PNGCompression) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-// isLabelPalette reports whether pal is the white/black palette of rendered
-// labels (index 0 white, 1 black).
-func isLabelPalette(pal color.Palette) bool {
-	if len(pal) != 2 {
-		return false
-	}
-	r0, g0, b0, _ := pal[0].RGBA()
-	r1, g1, b1, _ := pal[1].RGBA()
-	return r0 == 0xffff && g0 == 0xffff && b0 == 0xffff && r1 == 0 && g1 == 0 && b1 == 0
 }
 
 // Render renders ZPL with a fresh printer.

@@ -20,6 +20,14 @@ change the API.
   - TLC39: no flag without a 2D part, `*` field separators, the printer's
     MicroPDF417 sizing, a one-module gap and the taller flag.
 - The printer harness takes `ZPL_PRINTER_ONLY` to run selected fixtures.
+- Labels and field masks are packed one bit per pixel. Rendering is about
+  40% faster, uses about 80% less memory (450 KB for a 4×6 label at
+  8 dots/mm) and scales across cores. Rendered images are now a read-only
+  1-bit `image.PalettedImage` instead of `*image.Paletted`; code that
+  type-asserted `*image.Paletted` should use the `image.Image` interface.
+- MaxiCode hexagons and finder rings are filled a row span at a time.
+- Font caches are read without locking, and the bitmap-font glyph cache is
+  bounded.
 
 ### Known limitations
 - A ZD420 misencodes unbracketed DataBar Expanded data with AIs 01 and

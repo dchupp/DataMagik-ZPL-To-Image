@@ -110,31 +110,10 @@ func diagonalMask(w, h, t int, right bool) *bitmap.Bitmap {
 	return m
 }
 
-// unpacked[b] is byte b expanded to eight 0/1 pixels, most significant
-// bit first.
-var unpacked = func() (t [256][8]byte) {
-	for b := range 256 {
-		for i := range 8 {
-			t[b][i] = byte(b >> (7 - i) & 1)
-		}
-	}
-	return t
-}()
-
 // rowsMask converts packed 1-bpp rows (MSB first, 1 = black) to a bitmap.
 func rowsMask(data []byte, rowBytes int) *bitmap.Bitmap {
-	if rowBytes <= 0 {
+	if rowBytes <= 0 || !bitmap.Fits(rowBytes*8, len(data)/rowBytes) {
 		return bitmap.New(0, 0)
 	}
-	h := len(data) / rowBytes
-	if !bitmap.Fits(rowBytes*8, h) {
-		return bitmap.New(0, 0)
-	}
-	m := bitmap.New(rowBytes*8, h)
-	for i, b := range data[:h*rowBytes] {
-		if b != 0 {
-			copy(m.Pix[i*8:], unpacked[b][:])
-		}
-	}
-	return m
+	return bitmap.FromRows(data, rowBytes)
 }

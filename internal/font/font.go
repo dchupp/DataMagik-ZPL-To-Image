@@ -266,7 +266,7 @@ func (s *Scalable) rasterize(gid gotext.GID, em, sx float64, threshold uint8) *g
 	bm := bitmap.New(w, h)
 	for i, a := range alpha.Pix {
 		if a >= threshold {
-			bm.Pix[i] = 1
+			bm.Set(i%w, i/w, true)
 		}
 	}
 	g.bm, g.dx, g.dy = bm, x0, y0

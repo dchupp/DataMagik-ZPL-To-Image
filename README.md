@@ -52,7 +52,7 @@ opts := zpl.Options{FallbackFonts: [][]byte{notocjk.Regular}}
 
 ## Performance
 
-A typical 4×6-inch shipping label (`testdata/samples/shipping_label.zpl`: text, boxes, MaxiCode, two Code 128s and a QR code) takes about 1.4 ms to render and 2 ms including PNG encoding, on a modern x86 core. Rendered labels use a dedicated 1-bit PNG encoder; `Options.PNGCompression` trades speed for size (`PNGFast`, the default, is about twice as fast as `PNGBalanced` for files ~20% larger). With `ExpandCopies`, fields that do not change between `^PQ` copies are rendered once and reused. Glyphs are cached per font, so a long-lived `Printer` gets faster as it warms up. Run `go test -bench . -run XXX .` to measure.
+A typical 4×6-inch shipping label (`testdata/samples/shipping_label.zpl`: text, boxes, MaxiCode, two Code 128s and a QR code) takes about 0.6 ms to render and 1.5 ms including PNG encoding, on a modern x86 core, and about 450 KB of memory. Labels are kept packed at one bit per pixel. Rendering scales across cores: one `Printer` per goroutine reaches about 6,000–7,000 labels per second on a 12-core laptop CPU (`BenchmarkParallelShippingLabel`). Rendered labels use a dedicated 1-bit PNG encoder; `Options.PNGCompression` trades speed for size (`PNGFast`, the default, is about twice as fast as `PNGBalanced` for files ~20% larger). With `ExpandCopies`, fields that do not change between `^PQ` copies are rendered once and reused. Glyphs are cached per font, so a long-lived `Printer` gets faster as it warms up. Run `go test -bench . -run XXX .` to measure.
 
 ## Coverage
 
