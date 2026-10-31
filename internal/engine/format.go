@@ -144,16 +144,16 @@ func (e *UnknownCommandError) Error() string {
 // addOp records a drawing operation.
 func (f *format) addOp(o op) {
 	// Bound the work and memory of one format's pending fields: a mask
-	// counts its size, a rectangle fill the area it covers on the label
-	// (it costs compositing time, though no memory).
+	// counts its size, a rectangle fill its full area (it costs compositing
+	// time, though no memory). The area is not clipped to the label, whose
+	// size can still change with a later ^PW/^LL, but capped at the largest
+	// label bitmap, which is all one fill can ever touch.
 	var area int
 	if o.mask == nil {
 		if o.rect.Empty() {
 			return
 		}
-		w, h := f.labelSize()
-		c := o.rect.Intersect(image.Rect(0, 0, w, h)).Size()
-		area = max(c.X*c.Y, 1)
+		area = min(o.rect.Dx()*o.rect.Dy(), bitmap.MaxPixels)
 	} else {
 		if o.mask.W == 0 || o.mask.H == 0 {
 			return

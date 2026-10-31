@@ -199,3 +199,20 @@ func TestManyFullLabelBoxesBounded(t *testing.T) {
 		t.Errorf("took %v", d)
 	}
 }
+
+func TestBoxBudgetNotFooledByLaterLabelSize(t *testing.T) {
+	// The boxes are added while the label is small, then ^PW/^LL enlarge
+	// it; the budget must still count each box's full area.
+	src := "^XA" + strings.Repeat("^FO0,0^GB30000,2000,30000^FS", 120) + "^PW32000^LL2000^XZ"
+	start := time.Now()
+	_, warnings, err := Render(strings.NewReader(src), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) == 0 {
+		t.Error("want a 'format too large' warning")
+	}
+	if d := time.Since(start); d > 5*time.Second {
+		t.Errorf("took %v", d)
+	}
+}
