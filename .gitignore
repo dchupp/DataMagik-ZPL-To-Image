@@ -1,0 +1,7 @@
+# Build output and local renders
+/zpl2png
+*.test
+*.out
+label-*.png
+# Fuzz cache is local; crashers worth keeping live in testdata/fuzz
+/cmd/zpl2png/zpl2png

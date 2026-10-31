@@ -1,0 +1,2 @@
+go test fuzz v1
+string("~DGR:X.GRF,4,244444444,!,:^XA^XGX^FS^XZ")
