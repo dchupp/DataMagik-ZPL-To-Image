@@ -1,6 +1,6 @@
 module github.com/dchupp/DataMagik-ZPL-To-Image
 
-go 1.26.10
+go 1.26.0
 
 require (
 	github.com/go-text/typesetting v0.3.5
