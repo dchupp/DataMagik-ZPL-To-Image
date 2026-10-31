@@ -5,7 +5,10 @@
 // lines on top of these results.
 package barcode
 
-import "errors"
+import (
+	"errors"
+	"math"
+)
 
 // ErrInvalidData is returned (possibly wrapped) when field data cannot be
 // encoded by a symbology.
@@ -16,8 +19,8 @@ var ErrInvalidData = errors.New("barcode: invalid data")
 //
 // When Ratio is false each element width is a module count (1..n) and the
 // renderer multiplies by the ^BY module width. When Ratio is true every
-// element is 1 (narrow) or 2 (wide) and the renderer maps wide elements to
-// round(ratio*moduleWidth) as Zebra does for ratio-based symbologies.
+// element is one of the Elem constants and the renderer sizes it with
+// ElementWidth, as Zebra does for ratio-based symbologies.
 type Linear struct {
 	Elements []int
 	Ratio    bool
@@ -37,6 +40,42 @@ type Linear struct {
 	TextGroups []TextGroup
 }
 
+// Elements of a Ratio symbol.
+const (
+	ElemNarrow     = 1 // one module
+	ElemWide       = 2 // WideWidth
+	ElemWideNarrow = 3 // wide + narrow: the Plessey termination bar on a ZD420
+	ElemDash       = 4 // floor(5/3 × ratio × module): the Code 11 '-' centre bar on a ZD420
+)
+
+// ratioTenths is the ^BY ratio in tenths as a Zebra printer uses it: rounded
+// to one decimal, a trailing 5 rounding down (a ZD420 draws 2.25 as 2.2 and
+// 2.29 as 2.3).
+func ratioTenths(ratio float64) int {
+	return int(math.Ceil(ratio*10 - 0.5 - 1e-9))
+}
+
+// WideWidth is the width in dots of a wide element: floor(module × ratio),
+// the ratio taken to tenths first, as measured on a ZD420 (module 1 is 2
+// dots wide from ratio 2.0 to 2.9 and 3 at 3.0).
+func WideWidth(module int, ratio float64) int {
+	return module * ratioTenths(ratio) / 10
+}
+
+// ElementWidth is the width in dots of element e (one of the Elem
+// constants) of a Ratio symbol.
+func ElementWidth(e, module int, ratio float64) int {
+	switch e {
+	case ElemWide:
+		return WideWidth(module, ratio)
+	case ElemWideNarrow:
+		return WideWidth(module, ratio) + module
+	case ElemDash:
+		return 5 * module * ratioTenths(ratio) / 30
+	}
+	return module
+}
+
 // TextGroup is a run of interpretation-line text centred on a module range.
 type TextGroup struct {
 	Text       string
@@ -45,13 +84,13 @@ type TextGroup struct {
 	Small bool
 }
 
-// Width returns the symbol width in modules (narrow units when Ratio is set;
-// wide elements count as wideUnits).
+// Width returns the symbol width in modules. For a Ratio symbol it is the
+// width in dots at module width 1 and ratio wideUnits.
 func (l Linear) Width(wideUnits int) int {
 	n := 0
 	for _, e := range l.Elements {
-		if l.Ratio && e == 2 {
-			n += wideUnits
+		if l.Ratio {
+			n += ElementWidth(e, 1, float64(wideUnits))
 		} else {
 			n += e
 		}

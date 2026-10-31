@@ -47,7 +47,8 @@ func Encode(data string, opts Options) (barcode.Linear, error) {
 			el = append(el, 1, 2)
 		}
 	}
-	el = append(el, 2, 2, 1, 2, 1, 1, 2, 1, 2) // termination bar + stop
+	// Termination bar (wide + narrow on a ZD420) and stop.
+	el = append(el, barcode.ElemWideNarrow, 2, 1, 2, 1, 1, 2, 1, 2)
 	text := data
 	if opts.PrintCheckDigit {
 		lo := crc[0] | crc[1]<<1 | crc[2]<<2 | crc[3]<<3

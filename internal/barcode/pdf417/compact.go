@@ -124,9 +124,11 @@ func textValues(s []byte, sub int) ([]int, int) {
 		}
 		switch sub {
 		case subAlpha, subLower, subMixed:
+			// Sub-modes are chosen greedily as on a ZD420 (symbols read
+			// back from the printer): only long runs latch.
 			switch {
 			case isUpper(c) && sub == subLower:
-				if n := run(i, isUpper); n >= 4 || (i+n == len(s) && n >= 3) {
+				if run(i, isUpper) >= 5 {
 					v = append(v, 28, 28) // ml, al
 					sub = subAlpha
 				} else {
@@ -139,20 +141,21 @@ func textValues(s []byte, sub int) ([]int, int) {
 			case isLower(c):
 				v = append(v, 27) // ll
 				sub = subLower
-			case sub != subMixed && isPunct(c) && i+1 < len(s) && valueIn(s[i+1], sub) >= 0:
-				// A single punctuation character that is also in Mixed is
-				// shifted, not latched, when the next character stays in
-				// this sub-mode (as on a ZD420).
-				v = append(v, 29, int(punctVal[c])) // ps (shift)
-				i++
+			case sub != subMixed && isPunct(c):
+				// Punctuation is shifted even when it is also in Mixed
+				// ("://" is ps : ps / ps /); four or more in a row latch.
+				if run(i, isPunct) >= 4 {
+					v = append(v, 28, 25) // ml, pl
+					sub = subPunct
+				} else {
+					v = append(v, 29, int(punctVal[c])) // ps (shift)
+					i++
+				}
 			case isMixed(c):
 				v = append(v, 28) // ml
 				sub = subMixed
-			default: // punctuation only
-				if n := run(i, punctOnly); n >= 4 || (i+n == len(s) && n >= 3) {
-					if sub != subMixed {
-						v = append(v, 28) // ml
-					}
+			default: // punctuation only, from mixed
+				if run(i, punctOnly) >= 4 {
 					v = append(v, 25) // pl
 					sub = subPunct
 				} else {

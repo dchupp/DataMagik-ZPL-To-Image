@@ -89,8 +89,9 @@ func TestMicroPDF(t *testing.T) {
 	}
 }
 
-// tlcHash pins the MicroPDF417 module rows of TestMicroPDF.
-const tlcHash = "e15cece9ea37dcb1"
+// tlcHash pins the MicroPDF417 module rows of TestMicroPDF. The commas are
+// shifted to Punctuation, as a ZD420 encodes them (printer fixture q26).
+const tlcHash = "f0ae6c806c2465a8"
 
 func TestRejectsTrailingDataWithoutComma(t *testing.T) {
 	for _, d := range []string{"1234567;SERIAL", "1234567", "123456X"} {

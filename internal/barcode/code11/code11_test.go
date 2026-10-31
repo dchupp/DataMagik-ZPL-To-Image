@@ -51,3 +51,23 @@ func TestCheckDigits(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+// TestDashCentreBar pins a ZD420's '-': its centre bar is the ElemDash
+// element, not an ordinary wide bar (^BY2,3.0 "1-2" draws it 10 dots wide
+// where a wide bar is 6).
+func TestDashCentreBar(t *testing.T) {
+	l, err := Encode("1-2", Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// start(5) gap '1'(5) gap, then '-' = n n DASH n n.
+	got := l.Elements[12:17]
+	if want := []int{1, 1, barcode.ElemDash, 1, 1}; !reflect.DeepEqual(got, want) {
+		t.Errorf("'-' elements %v, want %v", got, want)
+	}
+	for i, e := range l.Elements {
+		if e == barcode.ElemDash && i != 14 {
+			t.Errorf("unexpected dash element at %d", i)
+		}
+	}
+}

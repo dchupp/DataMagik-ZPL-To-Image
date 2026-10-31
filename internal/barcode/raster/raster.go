@@ -13,34 +13,48 @@ import (
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
-// WideWidth is the width in dots of a wide element: round(ratio*module),
-// but always at least one dot wider than a narrow element, as on a Zebra
-// printer.
-func WideWidth(module int, ratio float64) int {
-	return max(int(float64(module)*ratio+0.5), module+1)
+// WideWidth is the width in dots of a wide element (see
+// barcode.WideWidth).
+func WideWidth(module int, ratio float64) int { return barcode.WideWidth(module, ratio) }
+
+// ElementWidth is the width in dots of element e of a Ratio symbol (see
+// barcode.ElementWidth).
+func ElementWidth(e, module int, ratio float64) int { return barcode.ElementWidth(e, module, ratio) }
+
+// ElementWidths returns the width in dots of each of l's elements: module
+// dots per unit, or for a Ratio symbol as given by ElementWidth.
+func ElementWidths(l barcode.Linear, module int, ratio float64) []int {
+	w := make([]int, len(l.Elements))
+	for i, e := range l.Elements {
+		if l.Ratio {
+			w[i] = ElementWidth(e, module, ratio)
+		} else {
+			w[i] = e * module
+		}
+	}
+	return w
 }
 
-// Bars draws a linear symbol's bars, height dots high. Elements are module
-// dots per unit; wide elements of a Ratio symbol are WideWidth dots.
+// PostalPitch is the distance in dots between POSTNET, PLANET and
+// Intelligent Mail bars: floor(2.5 × module), whatever the ^BY ratio, as
+// measured on a ZD420.
+func PostalPitch(module int) int { return 5 * module / 2 }
+
+// Bars draws a linear symbol's bars, height dots high, with elements sized
+// by ElementWidths.
 func Bars(l barcode.Linear, module int, ratio float64, height int) *bitmap.Bitmap {
-	wide := WideWidth(module, ratio)
-	ew := func(e int) int {
-		if l.Ratio && e == 2 {
-			return wide
-		}
-		return e * module
-	}
+	ws := ElementWidths(l, module, ratio)
 	w := 0
-	for _, e := range l.Elements {
-		w += ew(e)
+	for _, ew := range ws {
+		w += ew
 	}
 	bm := bitmap.New(w, height)
 	x := 0
-	for i, e := range l.Elements {
+	for i, ew := range ws {
 		if i%2 == 0 {
-			bm.FillRect(x, 0, ew(e), height, true)
+			bm.FillRect(x, 0, ew, height, true)
 		}
-		x += ew(e)
+		x += ew
 	}
 	return bm
 }

@@ -18,10 +18,11 @@ const (
 	// >7 >8 ...) in the field data; with no start code subset B is used.
 	ModeNone Mode = iota
 	// ModeUCC (m=U) is UCC Case Mode: exactly 19 digits (extra digits are
-	// dropped, missing ones padded with zeros on the right), encoded as
-	// Start C, FNC1, the digits and a Mod 10 check digit.
+	// dropped, missing ones padded with zeros on the left but not printed),
+	// encoded as Start C, FNC1, the digits and a Mod 10 check digit.
 	ModeUCC
-	// ModeAuto (m=A) chooses subsets automatically; >8 inserts FNC1.
+	// ModeAuto (m=A) chooses subsets automatically. The field data is
+	// taken literally: a ZD420 encodes ">8" as '>' and '8', not FNC1.
 	ModeAuto
 	// ModeGS1 (m=D) is UCC/EAN mode: parenthesised application identifiers
 	// and spaces are stripped for encoding (but printed), FNC1 is inserted at
@@ -103,9 +104,12 @@ func Codewords(data string, opts Options) ([]int, string, error) {
 		vals, text = encodeUCC(data)
 	case ModeAuto:
 		if opts.UCCCheckDigit {
-			data += string(gs1.CheckDigit(stripInvocations(data)))
+			data += string(gs1.CheckDigit(data))
 		}
-		toks := tokensAuto(data)
+		toks := make([]int, len(data))
+		for i := 0; i < len(data); i++ {
+			toks[i] = int(data[i])
+		}
 		vals = autoEncode(toks)
 		text = tokenText(toks)
 	case ModeGS1:
@@ -322,42 +326,6 @@ const (
 	tokFNC3 = -3
 )
 
-// tokensAuto converts m=A field data to tokens. >8 is FNC1, >2/>3 are
-// FNC3/FNC2, and the literal codes >0 (>), >< (^), >= (~) and >1 (DEL) are
-// honoured; subset selection codes are ignored because the printer picks
-// subsets itself.
-func tokensAuto(data string) []int {
-	var toks []int
-	for i := 0; i < len(data); i++ {
-		c := data[i]
-		if c != '>' {
-			toks = append(toks, int(c))
-			continue
-		}
-		if i+1 >= len(data) {
-			break
-		}
-		i++
-		switch data[i] {
-		case '8':
-			toks = append(toks, tokFNC1)
-		case '2':
-			toks = append(toks, tokFNC3)
-		case '3':
-			toks = append(toks, tokFNC2)
-		case '0':
-			toks = append(toks, '>')
-		case '<':
-			toks = append(toks, '^')
-		case '=':
-			toks = append(toks, '~')
-		case '1':
-			toks = append(toks, 127)
-		}
-	}
-	return toks
-}
-
 func tokenText(toks []int) string {
 	var b strings.Builder
 	for _, t := range toks {
@@ -410,9 +378,11 @@ func chooseAB(toks []int, i int, tie subset) subset {
 	return tie
 }
 
-// autoEncode selects subsets following the ISO/IEC 15417 Annex E rules,
-// which match Zebra's documented behaviour (a run of four or more digits
-// switches to subset C).
+// autoEncode selects subsets as a ZD420 does (measured by reading its bars
+// back): a run of four or more digits uses subset C. ISO/IEC 15417 Annex E
+// is followed except that an odd run at the start of the data is encoded as
+// pairs first (the last digit then goes to subset A or B) and that data of
+// exactly two digits stays in subset B.
 func autoEncode(toks []int) []int { return autoEncodeTie(toks, setB) }
 
 // autoEncodeTie is autoEncode with the subset used when neither A nor B is
@@ -424,16 +394,17 @@ func autoEncodeTie(toks []int, tie subset) []int {
 	}
 	var set subset
 	nd := digitRun(toks, j)
-	// Runs of four or more digits go to subset C as pairs. An odd digit is
-	// left for after the pairs (a ZD420 encodes "12345678901" as Start C,
-	// five pairs, Code B, "1"; ISO 15417 Annex E would put it first), except
-	// when the run continues past an FNC1, which subset C can carry: then
-	// the odd digit goes first so the whole run stays in C.
+	// A run of four or more digits at the start goes to subset C as pairs.
+	// An odd digit is left for after the pairs (a ZD420 encodes
+	// "12345678901" as Start C, five pairs, Code B, "1"; ISO 15417 Annex E
+	// would put it first), except when the run continues past an FNC1,
+	// which subset C can carry: then the odd digit goes first so the whole
+	// run stays in C.
 	oddFirst := func(i, nd int) bool {
 		return nd%2 == 1 && i+nd < len(toks) && toks[i+nd] == tokFNC1
 	}
 	switch {
-	case nd >= 4 && !oddFirst(j, nd), nd == 2 && j+2 == len(toks):
+	case nd >= 4 && !oddFirst(j, nd):
 		set = setC
 	default:
 		set = chooseAB(toks, j, tie)
@@ -481,7 +452,10 @@ func autoEncodeTie(toks []int, tie subset) []int {
 			continue
 		}
 		if nd := digitRun(toks, i); nd >= 4 {
-			if oddFirst(i, nd) {
+			// After the start an odd run's first digit is encoded in the
+			// current subset, then Code C ("AB12345" is A B 1 Code C 23 45
+			// on a ZD420).
+			if nd%2 == 1 {
 				enc(t, set)
 				i++
 			}
@@ -520,15 +494,16 @@ func encodeUCC(data string) ([]int, string) {
 	if len(d) > 19 {
 		d = d[:19]
 	}
-	for len(d) < 19 {
-		d = append(d, '0')
-	}
-	s := string(d) + string(gs1.CheckDigit(string(d)))
+	// Short data is padded with zeros on the left (as on a ZD420), which
+	// prints only the given digits and the check digit ("12" prints 123).
+	s := strings.Repeat("0", 19-len(d)) + string(d)
+	check := gs1.CheckDigit(s)
+	s += string(check)
 	toks := []int{tokFNC1}
 	for i := 0; i < len(s); i++ {
 		toks = append(toks, int(s[i]))
 	}
-	return autoEncode(toks), s
+	return autoEncode(toks), string(d) + string(check)
 }
 
 // gs1CheckLen returns the length of the data field of AIs that end in a

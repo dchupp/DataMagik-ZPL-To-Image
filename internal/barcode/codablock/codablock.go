@@ -15,7 +15,6 @@ package codablock
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code128"
@@ -46,12 +45,16 @@ type Options struct {
 	NoCheck bool
 	// RowHeight is the data row height in modules (^BB h; default 8).
 	RowHeight int
+	// RowDots, when positive, is the data row height in matrix cells
+	// instead of RowHeight × Narrow (a ZD420 draws ^BB rows h − module dots
+	// high, not a whole number of modules).
+	RowDots int
 	// SepHeight is the separator bar height in modules (default 1).
 	SepHeight int
 	// Narrow is the number of matrix cells per module (default 1).
 	Narrow int
 	// Ratio is the Codablock A wide:narrow ratio (2.0..3.0, default 3.0);
-	// wide elements are round(Ratio*Narrow) cells.
+	// wide elements are barcode.WideWidth(Narrow, Ratio) cells.
 	Ratio float64
 }
 
@@ -128,16 +131,20 @@ func assemble(rows [][]bool, sepL, sepR int, opts Options) barcode.Matrix {
 	var m barcode.Matrix
 	add := func(r []bool, h int) {
 		m.Rows = append(m.Rows, scale(r))
-		m.RowHeights = append(m.RowHeights, h*n)
+		m.RowHeights = append(m.RowHeights, h)
 	}
-	add(full, opts.SepHeight)
+	rowH := opts.RowHeight * n
+	if opts.RowDots > 0 {
+		rowH = opts.RowDots
+	}
+	add(full, opts.SepHeight*n)
 	for i, r := range rows {
 		if i > 0 {
-			add(inner, opts.SepHeight)
+			add(inner, opts.SepHeight*n)
 		}
-		add(r, opts.RowHeight)
+		add(r, rowH)
 	}
-	add(full, opts.SepHeight)
+	add(full, opts.SepHeight*n)
 	return m
 }
 
@@ -183,7 +190,10 @@ func encodeA(data []byte, opts Options) (barcode.Matrix, error) {
 		r = (n + 2 + c - 1) / c
 	}
 	if r == 1 {
+		// One row has no check characters and is not padded to Columns: a
+		// ZD420 prints ^BBN,20,Y,6,,A^FDAB12 as *, L, A, B, 1, 2, *.
 		checks = false
+		c = n
 	}
 	if r > 22 {
 		return barcode.Matrix{}, errf("data needs %d rows (max 22)", r)
@@ -212,7 +222,7 @@ func encodeA(data []byte, opts Options) (barcode.Matrix, error) {
 	// Elements are built at Narrow resolution directly, so assemble with
 	// Narrow = 1 and scale heights afterwards.
 	nc := opts.Narrow
-	wide := int(math.Round(ratio * float64(nc)))
+	wide := barcode.WideWidth(nc, ratio)
 	narrow := nc
 	var rows [][]bool
 	for i := 0; i < r; i++ {
@@ -246,7 +256,15 @@ func encodeA(data []byte, opts Options) (barcode.Matrix, error) {
 	o.Narrow = 1
 	o.RowHeight = opts.RowHeight * nc
 	o.SepHeight = opts.SepHeight * nc
-	return assemble(rows, starW+narrow, starW+narrow, o), nil
+	m := assemble(rows, starW+narrow, starW+narrow, o)
+	if r == 1 {
+		// A ZD420 extends the separators of a single row one narrow
+		// element past the stop character.
+		for y := range m.Rows {
+			m.Rows[y] = appendRun(m.Rows[y], y != 1, narrow)
+		}
+	}
+	return m, nil
 }
 
 func appendRun(row []bool, dark bool, n int) []bool {

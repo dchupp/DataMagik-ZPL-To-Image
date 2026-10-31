@@ -348,6 +348,11 @@ func TestEncode_Ratio(t *testing.T) {
 	if w25 != 2*w2+15 {
 		t.Errorf("ratio 2.5 at ModuleWidth 2: width %d, want %d", w25, 2*w2+15)
 	}
+	// Wide is floor(module × ratio) as on a Zebra printer: 2 pixels at
+	// ModuleWidth 1 for every ratio below 3.
+	if w, _ := size(t, "code39", "ABC", Options{Ratio: 2.9}); w != w2 {
+		t.Errorf("ratio 2.9 at ModuleWidth 1: width %d, want %d", w, w2)
+	}
 }
 
 func TestEncode_CheckDigitOption(t *testing.T) {

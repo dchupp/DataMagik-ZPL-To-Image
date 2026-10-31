@@ -9,8 +9,9 @@ import (
 )
 
 func TestZebraFigure(t *testing.T) {
-	// ZPL II guide ^BP figure: ^BY3^BPN,N,100,Y,N^FD12345^FS.
-	want := []int{2, 1, 2, 1, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2}
+	// ZPL II guide ^BP figure: ^BY3^BPN,N,100,Y,N^FD12345^FS. The
+	// termination bar (element 64) is wide + narrow, as a ZD420 draws it.
+	want := []int{2, 1, 2, 1, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 1, 2, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1, 2, 1, barcode.ElemWideNarrow, 2, 1, 2, 1, 1, 2, 1, 2}
 	l, err := Encode("12345", Options{})
 	if err != nil {
 		t.Fatal(err)

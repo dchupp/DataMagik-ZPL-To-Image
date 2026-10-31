@@ -74,8 +74,10 @@ func TestCodewords(t *testing.T) {
 		{"auto short digits", "A12B", Options{Mode: ModeAuto}, []int{104, 33, 17, 18, 34}, "A12B"},
 		{"auto control", "A\x01B", Options{Mode: ModeAuto}, []int{103, 33, 65, 34}, "AB"},
 		{"auto shift", "a\x01b", Options{Mode: ModeAuto}, []int{104, 65, 98, 65, 66}, "ab"},
-		{"auto fnc1", ">;>80204017773003486100008535>8910001>837252", Options{Mode: ModeAuto},
-			[]int{104, 102, 16, 99, 20, 40, 17, 77, 30, 3, 48, 61, 0, 0, 85, 35, 102, 91, 0, 1, 102, 37, 25, 100, 18}, "020401777300348610000853591000137252"},
+		// m=A takes the field data literally: ">8" is '>' and '8', not FNC1
+		// (a ZD420 encodes it so).
+		{"auto literal invocations", "A1>82>0", Options{Mode: ModeAuto},
+			[]int{104, 33, 17, 30, 24, 18, 30, 16}, "A1>82>0"},
 		{"gs1 sscc", "(00)10084423 7449200940", Options{Mode: ModeGS1},
 			[]int{105, 102, 0, 10, 8, 44, 23, 74, 49, 20, 9, 41}, "(00)10084423 7449200941"},
 		{"gs1 gtin append", "(01)0061414199999", Options{Mode: ModeGS1},
@@ -86,7 +88,9 @@ func TestCodewords(t *testing.T) {
 			[]int{105, 102, 10, 12, 102, 21, 34}, "(10)12(21)34"},
 		{"gs1 explicit", "(91)0005886>8(10)0000410549>8(99)05", Options{Mode: ModeGS1},
 			[]int{104, 102, 25, 99, 10, 0, 58, 86, 102, 10, 0, 0, 41, 5, 49, 102, 99, 5}, "(91)0005886(10)0000410549(99)05"},
-		{"ucc pad", "123", Options{Mode: ModeUCC}, []int{105, 102, 12, 30, 0, 0, 0, 0, 0, 0, 0, 6}, "12300000000000000006"},
+		// Short data is padded with zeros on the left (a ZD420 encodes "12"
+		// as 0000000000000000012 and check digit 3, and prints "123").
+		{"ucc pad", "12", Options{Mode: ModeUCC}, []int{105, 102, 0, 0, 0, 0, 0, 0, 0, 0, 1, 23}, "123"},
 	}
 	for _, tc := range tests {
 		got, text, err := Codewords(tc.data, tc.opts)
@@ -236,5 +240,53 @@ func TestAutoOddDigitsLast(t *testing.T) {
 	}
 	if want := []int{105, 12, 34, 56, 78, 90, 100, 17}; !reflect.DeepEqual(vals, want) {
 		t.Errorf("got %v, want %v", vals, want)
+	}
+}
+
+// TestAutoModeZD420 pins m=A subset choices measured on a ZD420 (bars read
+// back with ^HG): a run of four or more digits uses subset C; at the start
+// an odd run is encoded as pairs followed by the last digit in subset B,
+// elsewhere the first digit is encoded before Code C; two digits alone stay
+// in subset B; invocation codes are literal characters.
+func TestAutoModeZD420(t *testing.T) {
+	tests := []struct {
+		data string
+		want []int
+	}{
+		{"AB1234567", []int{104, 33, 34, 17, 99, 23, 45, 67}},
+		{"1234567", []int{105, 12, 34, 56, 100, 23}},
+		{"12", []int{104, 17, 18}},
+		{"123", []int{104, 17, 18, 19}},
+		{"1234", []int{105, 12, 34}},
+		{"12345", []int{105, 12, 34, 100, 21}},
+		{"AB1234", []int{104, 33, 34, 99, 12, 34}},
+		{"AB123", []int{104, 33, 34, 17, 18, 19}},
+		{"AB12345CD", []int{104, 33, 34, 17, 99, 23, 45, 100, 35, 36}},
+		{"AB123456CD", []int{104, 33, 34, 99, 12, 34, 56, 100, 35, 36}},
+		{"abc12345", []int{104, 65, 66, 67, 17, 99, 23, 45}},
+		{"A123456789", []int{104, 33, 17, 99, 23, 45, 67, 89}},
+		{"12345AB", []int{105, 12, 34, 100, 21, 33, 34}},
+		{"A12345>8678", []int{104, 33, 17, 99, 23, 45, 100, 30, 99, 86, 78}},
+		{">;1234", []int{104, 30, 27, 99, 12, 34}},
+		{"ab\x09cd", []int{104, 65, 66, 98, 73, 67, 68}},
+		{"AB\x09ab", []int{103, 33, 34, 73, 100, 65, 66}},
+	}
+	for _, tc := range tests {
+		got, _, err := Codewords(tc.data, Options{Mode: ModeAuto})
+		if err != nil {
+			t.Errorf("%q: %v", tc.data, err)
+			continue
+		}
+		if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%q: got %v, want %v", tc.data, got, tc.want)
+		}
+	}
+	// m=D shares the subset rules after its leading FNC1.
+	got, _, err := Codewords("(21)A12345", Options{Mode: ModeGS1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []int{104, 102, 18, 17, 33, 17, 99, 23, 45}; !reflect.DeepEqual(got, want) {
+		t.Errorf("(21)A12345: got %v, want %v", got, want)
 	}
 }

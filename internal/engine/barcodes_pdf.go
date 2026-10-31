@@ -75,8 +75,10 @@ func (f *format) pdfFamily(fld *field, st fieldState, b *barcodeSpec, data []byt
 			NoCheck: !ps.yes(2, true),
 			// h is the row pitch in dots, including the one-module separator
 			// (measured on a ZD420: h=10 at ^BY2 gives 8-dot rows and 2-dot
-			// separators). The encoder takes heights in narrow modules.
+			// separators; at ^BY3 h=20 gives 17-dot rows, so rows are
+			// h − module dots, not whole modules).
 			RowHeight: max((f.fit(max(ps.int(1, 8), 2), 44)-m)/m, 1),
+			RowDots:   max(f.fit(max(ps.int(1, 8), 2), 44)-m, 1),
 			SepHeight: 1,
 			Narrow:    m,
 			Ratio:     st.by.ratio,

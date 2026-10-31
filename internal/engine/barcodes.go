@@ -248,7 +248,11 @@ func (f *format) dataMatrixShape(b *barcodeSpec, st fieldState, data []byte) (sh
 	}
 	h := ps.int(1, 0)
 	if h <= 0 {
-		h = max(int(math.Round(float64(st.by.height)/float64(max(m.Height(), 1)))), 1)
+		// Without a module size the symbol fits in the ^BY height: a ZD420
+		// draws modules floor(height / rows) dots, at least 1 (^BY3,3.0,40
+		// gives 2-dot modules for a 14×14 symbol; the ^BY module width and
+		// ratio do not matter).
+		h = max(st.by.height/max(m.Height(), 1), 1)
 	}
 	h = f.fit(h, max(m.Width(), m.Height()))
 	return matrixShape(m, h, h), nil

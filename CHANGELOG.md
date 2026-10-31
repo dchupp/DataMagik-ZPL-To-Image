@@ -50,6 +50,35 @@ change the API.
 - Font caches are read without locking, and the bitmap-font glyph cache is
   bounded.
 
+### Fixed
+- Divergences from a ZD420 (300 dpi) found by the printer harness, now
+  covered by fixtures `testdata/printer/q16`–`q26`:
+  - Code 128 `m=A`: an odd digit run after the start puts its first digit
+    before Code C (`AB1234567` is A B 1 Code C 23 45 67, 224 dots at `^BY2`,
+    was 246); two digits alone stay in subset B; field data is literal
+    (`>8` is `>` and `8`, not FNC1). `m=U` pads short data with zeros on
+    the left and prints only the given digits and the check digit.
+  - Two-width symbologies (Code 39, LOGMARS, Code 11, Codabar, ITF,
+    industrial and standard 2 of 5, MSI, Plessey, TLC39, CODABLOCK A): a
+    wide element is floor(module × ratio), the ratio taken to tenths, with
+    no minimum (`^BY1,2.5` draws 2-dot wide bars, was 3). The Plessey
+    termination bar is wide + narrow and the Code 11 `-` centre bar
+    floor(5/3 × ratio × module), as the printer draws them. The `barcode`
+    package's `Ratio` follows the same rule.
+  - POSTNET, PLANET and Intelligent Mail bars are floor(2.5 × module) apart
+    whatever the ratio (was wide + module, or 2 × module for IMb). The
+    `barcode` package uses the same pitch.
+  - Data Matrix without a module size: floor(`^BY` height / symbol rows)
+    dots per module (was rounded: `^BY3,3.0,40` gives 2-dot modules, a
+    28×28 symbol, was 42×42).
+  - PDF417/MicroPDF417 Text Compaction chooses sub-modes as the printer
+    does: punctuation is shifted from Alpha or Lower even when it is also
+    in Mixed, and only four or more in a row latch; upper case inside lower
+    case is shifted unless five or more follow.
+  - CODABLOCK A: one row is not padded to the column count and its
+    separators reach one module past the stop character; rows are
+    h − module dots high (not rounded down to whole modules).
+
 ### Known limitations
 - A ZD420 misencodes unbracketed DataBar Expanded data with AIs 01 and
   320x (as 393x); this library keeps the correct encoding.

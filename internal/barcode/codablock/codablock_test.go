@@ -124,6 +124,22 @@ func TestCodablockA(t *testing.T) {
 	if got := decodeCode39Row(t, m.Rows[1]); got != "*LABC*" {
 		t.Errorf("single row %q", got)
 	}
+	// A single row is not padded to Columns (a ZD420 prints
+	// ^BBN,20,Y,6,,A^FDAB12 with four data characters).
+	m, _ = Encode([]byte("AB12"), Options{Mode: ModeA, Columns: 6})
+	if got := decodeCode39Row(t, m.Rows[1]); got != "*LAB12*" {
+		t.Errorf("single row with columns %q", got)
+	}
+	// Wide elements follow barcode.WideWidth: at Narrow 1 and ratio 2.5
+	// that row is 7 characters of 12 cells plus 6 gaps, 90 wide, and the
+	// separators reach one cell further: 91 as on a ZD420.
+	m, _ = Encode([]byte("AB12"), Options{Mode: ModeA, Columns: 6, Narrow: 1, Ratio: 2.5, RowDots: 17})
+	if w := m.Width(); w != 91 || m.Rows[1][90] || !m.Rows[0][90] || !m.Rows[2][90] {
+		t.Errorf("single row width %d, want 91 with separators reaching the last cell", w)
+	}
+	if m.RowHeights[1] != 17 {
+		t.Errorf("RowDots: row height %d, want 17", m.RowHeights[1])
+	}
 	// s=N: no K1/K2, filler only.
 	m, _ = Encode([]byte("ABCDEFG"), Options{Mode: ModeA, Columns: 4, NoCheck: true})
 	if got := decodeCode39Row(t, m.Rows[3]); got != "*0EFG 0*" {

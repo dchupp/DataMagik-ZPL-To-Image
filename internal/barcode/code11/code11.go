@@ -60,6 +60,11 @@ func Encode(data string, opts Options) (barcode.Linear, error) {
 	add(startStop)
 	for _, x := range v {
 		add(patterns[x])
+		if alphabet[x] == '-' {
+			// A ZD420 draws the '-' centre bar floor(5/3 × ratio) modules
+			// wide, not as an ordinary wide bar.
+			el[len(el)-3] = barcode.ElemDash
+		}
 	}
 	add(startStop)
 	return barcode.Linear{Elements: el, Ratio: true, Text: string(text)}, nil

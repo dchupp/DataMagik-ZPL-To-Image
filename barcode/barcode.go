@@ -70,8 +70,9 @@ type Options struct {
 	// Ratio is the wide:narrow ratio of two-width symbologies (Code 39,
 	// LOGMARS, Code 11, Codabar, ITF, industrial and standard 2 of 5, MSI,
 	// Plessey, TLC39), 2.0–3.0 (0 means 3.0, the ZPL ^BY default). A wide
-	// element is round(Ratio×ModuleWidth) pixels, at least one more than a
-	// narrow one, so at ModuleWidth 1 every ratio from 2.5 up gives 3.
+	// element is floor(Ratio×ModuleWidth) pixels, the ratio taken to
+	// tenths, as a Zebra printer draws it: at ModuleWidth 1 every ratio
+	// below 3.0 gives 2.
 	Ratio float64
 
 	// CheckDigit adds the optional check character: Mod 43 for Code 39,

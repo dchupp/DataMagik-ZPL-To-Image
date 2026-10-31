@@ -152,19 +152,10 @@ const (
 // linearShape draws bars and the interpretation line.
 func (f *format) linearShape(fld *field, st fieldState, l barcode.Linear, p linearParams, kind hriKind) shape {
 	m := st.by.module
-	wide := max(int(float64(m)*st.by.ratio+0.5), m+1)
-	if !l.Ratio {
-		wide = 0
-	}
-	ew := func(e int) int {
-		if l.Ratio && e == 2 {
-			return wide
-		}
-		return e * m
-	}
+	ws := raster.ElementWidths(l, m, st.by.ratio)
 	width := 0
-	for _, e := range l.Elements {
-		width += ew(e)
+	for _, w := range ws {
+		width += w
 	}
 
 	guardExt := 0
@@ -173,8 +164,7 @@ func (f *format) linearShape(fld *field, st fieldState, l barcode.Linear, p line
 	}
 	bars := bitmap.New(width, p.height+guardExt)
 	x := 0
-	for i, e := range l.Elements {
-		w := ew(e)
+	for i, w := range ws {
 		if i%2 == 0 {
 			h := p.height
 			if l.Guards != nil && i < len(l.Guards) && l.Guards[i] {
@@ -316,12 +306,8 @@ func (f *format) upcShape(bars *bitmap.Bitmap, l barcode.Linear, p linearParams,
 // postalShape draws POSTNET, PLANET or Intelligent Mail bars.
 func (f *format) postalShape(fld *field, st fieldState, pc barcode.Postal, p linearParams, imb bool) shape {
 	m := st.by.module
-	pitch := 2 * m
-	if !imb {
-		pitch = raster.WideWidth(m, st.by.ratio) + m
-	}
 	h := p.height
-	bm := raster.Postal(pc, m, pitch, h, imb)
+	bm := raster.Postal(pc, m, raster.PostalPitch(m), h, imb)
 	if !p.hri || pc.Text == "" {
 		return boxShape(bm)
 	}

@@ -136,9 +136,8 @@ func encodeCode128(gs1 bool) func(string, opts) (*bitmap.Bitmap, error) {
 			}
 			return code128.Encode(data, code128.Options{Mode: code128.ModeGS1})
 		}
-		// Automatic mode reads ">x" as a Zebra function code; ">0" is a
-		// literal '>'.
-		return code128.Encode(strings.ReplaceAll(data, ">", ">0"), code128.Options{Mode: code128.ModeAuto, UCCCheckDigit: o.CheckDigit})
+		// Automatic mode takes the data literally ('>' included).
+		return code128.Encode(data, code128.Options{Mode: code128.ModeAuto, UCCCheckDigit: o.CheckDigit})
 	})
 }
 
@@ -247,7 +246,7 @@ func encodePostal(enc func(string) (ibarcode.Postal, error), imb bool) func(stri
 		}
 		// Bars and spaces are one module wide, as the USPS specifies
 		// (about 22 bars per inch).
-		return raster.Postal(pc, o.mw, 2*o.mw, o.height(def), imb), nil
+		return raster.Postal(pc, o.mw, raster.PostalPitch(o.mw), o.height(def), imb), nil
 	}
 }
 
