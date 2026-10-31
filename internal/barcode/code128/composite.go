@@ -1,6 +1,20 @@
 package code128
 
-import "github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+)
+
+// Link selects the 2D component that a composite linear symbol signals.
+type Link int
+
+const (
+	LinkNone Link = iota // no 2D component: no linkage character
+	LinkAB               // CC-A or CC-B
+	LinkC                // CC-C
+)
 
 // EncodeComposite encodes GS1-128 data (mode D syntax) as the linear part of
 // a GS1 Composite symbol. Per ISO/IEC 24723 7.4.3 an extra code set
@@ -8,10 +22,17 @@ import "github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 // character to signal the 2D component: CC-A/B use Code B (final set A),
 // Code C (final set B) or Code A (final set C); CC-C uses Code C (final set
 // A), Code A (final set B) or Code B (final set C).
-func EncodeComposite(data string, ccc bool) (barcode.Linear, error) {
-	vals, text, err := Codewords(data, Options{Mode: ModeGS1})
+//
+// Subsets follow a ZD420: subset A is preferred over B when either would
+// do, and bracketed data is encoded as its text, parentheses included,
+// after FNC1.
+func EncodeComposite(data string, link Link) (barcode.Linear, error) {
+	vals, text, err := compositeCodewords(data)
 	if err != nil {
 		return barcode.Linear{}, err
+	}
+	if link == LinkNone {
+		return linear(vals, text), nil
 	}
 	set := map[int]int{103: 'A', 104: 'B', 105: 'C'}[vals[0]]
 	for i := 1; i < len(vals); i++ {
@@ -27,14 +48,35 @@ func EncodeComposite(data string, ccc bool) (barcode.Linear, error) {
 			set = 'A'
 		}
 	}
-	link := map[[2]int]int{
+	links := map[[2]int]int{
 		{'A', 0}: 100, {'B', 0}: 99, {'C', 0}: 101,
 		{'A', 1}: 99, {'B', 1}: 101, {'C', 1}: 100,
 	}
 	k := 0
-	if ccc {
+	if link == LinkC {
 		k = 1
 	}
-	vals = append(vals, link[[2]int{set, k}])
+	vals = append(vals, links[[2]int{set, k}])
 	return linear(vals, text), nil
+}
+
+func compositeCodewords(data string) ([]int, string, error) {
+	var toks []int
+	text := data
+	if strings.HasPrefix(data, "(") {
+		toks = []int{tokFNC1}
+		for i := 0; i < len(data); i++ {
+			if data[i] >= 128 {
+				return nil, "", fmt.Errorf("%w: code128: GS1 data must be ASCII", barcode.ErrInvalidData)
+			}
+			toks = append(toks, int(data[i]))
+		}
+	} else {
+		toks, text = parseGS1(data)
+	}
+	vals := autoEncodeTie(toks, setA)
+	if len(vals) <= 2 {
+		return nil, "", fmt.Errorf("%w: code128: no encodable data in %q", barcode.ErrInvalidData, data)
+	}
+	return vals, text, nil
 }

@@ -438,7 +438,7 @@ func (f *format) dataBar(fld *field, st fieldState, ps params, data string) ([]s
 		return f.composite(fld, st, ps, typ, mag, sepH, data)
 	}
 	linear, cc, hasCC := databar.SplitComposite(data)
-	sym, err := databar.Encode(databar.Type(typ), linear, databar.Options{Linkage: hasCC, Segments: ps.int(5, 22)})
+	sym, err := databar.Encode(databar.Type(typ), linear, databar.Options{Linkage: hasCC, Segments: ps.int(5, 22), ZebraParentheses: true})
 	if err != nil {
 		return nil, err
 	}

@@ -8,13 +8,14 @@
 //   - Linear: the Code 39 symbol "*" ECI "*" (no check character; the ECI
 //     number carries its own check digit).
 //   - Flag: drawn FlagGap narrow modules (one quiet zone) right of the last
-//     bar of the Code 39 stop character, same height as the linear symbol.
+//     bar of the Code 39 stop character, vertically centred on the linear
+//     symbol and taller than it (see FlagExtension).
 //   - MicroPDF: its left edge (first bar of the left row address pattern)
 //     is MicroPDFOffset narrow modules right of the first bar of the Code 39
 //     start character (aligned with the first interior space), and its
-//     bottom row sits directly on top of the Code 39 bars with no gap. Its
-//     modules are ^BT w2 wide and its rows ^BT h2 high (one Matrix row per
-//     symbol row).
+//     bottom row is one narrow module above the Code 39 bars. Its modules
+//     are ^BT w2 wide and its rows ^BT h2 high (one Matrix row per symbol
+//     row). It has four columns and at least six rows.
 package tlc39
 
 import (
@@ -33,7 +34,32 @@ const (
 	MicroPDFOffset = 1   // narrow modules from the Code 39 start to the MicroPDF417
 	MaxFieldLen    = 25  // serial number and each additional field
 	MaxDataLen     = 150 // serial + additional data incl. commas
+
+	// minDataCodewords selects at least the 4-column 6-row MicroPDF417, the
+	// smallest a ZD420 prints.
+	minDataCodewords = 12
 )
+
+// flagScale maps the Code 39 wide-to-narrow ratio to the flag extension
+// per dot of bar height, measured on a ZD420 (exact for heights 10–250
+// dots at ratios 2, 2.2, 2.5 and 3); other ratios are interpolated.
+var flagScale = [][2]float64{{2, 0.214}, {2.2, 0.2075}, {2.5, 0.2025}, {3, 0.1975}}
+
+// FlagExtension returns how far, in dots, the linkage flag extends above
+// and below Code 39 bars h dots high printed at the given wide-to-narrow
+// ratio (2–3).
+func FlagExtension(h int, ratio float64) int {
+	k := flagScale[len(flagScale)-1][1]
+	for i := 1; i < len(flagScale); i++ {
+		a, b := flagScale[i-1], flagScale[i]
+		if ratio <= b[0] {
+			t := max(ratio-a[0], 0) / (b[0] - a[0])
+			k = a[1] + t*(b[1]-a[1])
+			break
+		}
+	}
+	return int(float64(h) * k)
+}
 
 // Symbol is an encoded TLC39 symbol.
 type Symbol struct {
@@ -47,9 +73,12 @@ type Symbol struct {
 // Options controls TLC39 encoding.
 type Options struct {
 	// FieldSeparator replaces the commas between the serial number and
-	// additional fields inside the MicroPDF417 data. 0 keeps the commas as
-	// Zebra stores the data ("appended after the serial number").
+	// additional fields inside the MicroPDF417 data; 0 keeps the commas. A
+	// ZD420 uses '*'.
 	FieldSeparator byte
+	// ZebraPadding pads the MicroPDF417 like a Zebra printer (see
+	// micropdf.PadZebra).
+	ZebraPadding bool
 }
 
 // code39Elements returns the Code 39 elements (1 narrow, 2 wide) of s,
@@ -116,9 +145,12 @@ func Encode(data string, opts Options) (Symbol, error) {
 		payload = strings.ReplaceAll(rest, ",", string(opts.FieldSeparator))
 	}
 	cws := append([]int{pdf417.CWLinkageOther}, pdf417.CompactMicro([]byte(payload))...)
-	v, ok := micropdf.Smallest(4, len(cws))
+	v, ok := micropdf.Smallest(4, max(len(cws), minDataCodewords, sizeEstimate(rest)))
 	if !ok {
 		return bad("data too long for MicroPDF417")
+	}
+	if opts.ZebraPadding {
+		cws = micropdf.PadZebra(cws, v.DataCapacity())
 	}
 	m, err := micropdf.EncodeCodewords(cws, v)
 	if err != nil {
@@ -126,4 +158,17 @@ func Encode(data string, opts Options) (Symbol, error) {
 	}
 	sym.MicroPDF = &m
 	return sym, nil
+}
+
+// sizeEstimate is the number of data codewords a ZD420 reserves for the
+// MicroPDF417 data rest (fields separated by commas): two characters per
+// codeword for a single field, the Byte Compaction size with separators,
+// plus the linkage and mode latch codewords. The symbol can be larger than
+// the data needs; the rest is padding.
+func sizeEstimate(rest string) int {
+	n := len(rest)
+	if strings.Contains(rest, ",") {
+		return 2 + n/6*5 + n%6
+	}
+	return 2 + (n+1)/2
 }

@@ -78,7 +78,7 @@ Every command in the Zebra ZPL II Programming Guide index has a handler. `intern
   - Default: font A magnified by the `^BY` module width, centred below the bars.
   - A preceding `^A` font is used as given and left-aligned.
   - UPC/EAN digits are laid out between the guard bars.
-- **Verified against a real printer:** `internal/verify` can compare renders with a Zebra printer's own output (stored with `^IS`, read back with `^HG`, nothing printed). On a ZD420 at 300 dpi, QR, PDF417, MaxiCode, graphics, interpretation lines and Code 128 match to within about 1–5% of ink area, mostly glyph-shape differences from the substitute fonts. Behaviour learned from the printer, where it differs from the guide or Labelary:
+- **Verified against a real printer:** `internal/verify` can compare renders with a Zebra printer's own output (stored with `^IS`, read back with `^HG`, nothing printed). On a ZD420 at 300 dpi, CODABLOCK, GS1 DataBar, GS1 Composite and TLC39 match pixel for pixel; QR, PDF417, MaxiCode, graphics, interpretation lines and Code 128 match to within about 0.3–5% of ink area, mostly glyph-shape differences from the substitute fonts. Behaviour learned from the printer, where it differs from the guide or Labelary:
   - `^BQ` encodes exactly the requested error-correction level and ignores the mask parameter.
   - PDF417 picks columns so rows ÷ (columns + 4) is closest to 20/7; `^B7`, `^BF` and `^BB` row heights are in dots.
   - MaxiCode is drawn on a whole-dot hexagon grid and ends its data with codeword 63 before padding.
@@ -86,16 +86,20 @@ Every command in the Zebra ZPL II Programming Guide index has a handler. `intern
   - `^TB` steps font-0 lines by 1.25× the height.
   - GS1-128 text prints as typed.
   - Code 128 auto mode puts an odd digit after the subset C pairs.
+  - `^BR` data in parentheses is encoded as the literal text, parentheses included, without parsing the AIs (DataBar Expanded, the GS1-128 of types 11–12 and the 2D components). Scanners therefore return "(01)…" as text, not as a GS1 element string; leave out the parentheses for real GS1 data.
+  - `^BR` types 7–12 start the linear symbol 7 (UPC/EAN) or 10 (GS1-128) modules right of the field origin. UPC/EAN bars ignore the height parameter (74 modules, 60 for EAN-8) and sit under a 6-module separator. In composites, Code 128 prefers subset A, and there is no linkage character without a 2D part.
+  - PDF417 and MicroPDF417 use Numeric Compaction for runs of 14 or more digits (all-digit MicroPDF417 data always, all-digit PDF417 data from 13). A single punctuation character between letters is shifted, not latched. MicroPDF417 pads with a fixed cycle of Text Compaction latches instead of 900s.
+  - TLC39 separates fields with `*` in the MicroPDF417, which is at least 4×6 and sized from the field length. The MicroPDF417 sits one module above the bars, and the flag extends above and below them.
 - **Calibration against Labelary:**
 
 ## Known limitations
 
 - **Data Matrix ECC 000–140:** the legacy convolutional variants aren't publicly specified. Printers print ECC 000 when `^BX` has no quality parameter; this library renders ECC 200 instead and returns a warning (add quality 200 to match the printer).
-- **Known printer differences:** CODABLOCK row structure and the GS1 Composite (`^BR` types 7–12) layout differ from a ZD420's output; both still encode the same data.
+- **Printer bug not reproduced:** a ZD420 encodes unbracketed DataBar Expanded data with AI 01 followed by 320x as if it were 393x, so scanners read different data. This library encodes the data correctly.
 - **Proprietary compressed formats:** `^GF` format C and `~DY` format C (AR-compressed) are treated as raw binary. `~DS` Intellifont downloads fall back to font 0.
 - **Script coverage:** shaped output is only as good as the fonts supplied; other scripts need `Options.FallbackFonts` (or `~DU`/`~DY` fonts).
 - **`^CI26`:** decodes as UTF-8 when the data is valid UTF-8, otherwise as GB18030.
-- **Undocumented Zebra behaviour:** where Zebra's own behaviour isn't documented (exact Code 128 auto-mode subset choices, PDF417 automatic aspect ratio, TLC39 2D content), the encoders follow the relevant ISO/AIM specification. Each package documents its choice.
+- **Undocumented Zebra behaviour:** where neither Zebra's documentation nor a printer measurement settles a choice, the encoders follow the relevant ISO/AIM specification. Each package documents its choice.
 - **Clock default:** `^FC` uses `time.Now` unless `Options.Now` is set.
 
 ## Testing

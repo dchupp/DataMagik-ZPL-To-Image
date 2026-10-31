@@ -59,7 +59,8 @@ func TestMicroPDF(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := s.MicroPDF
-	if m == nil || m.Width() != 99 || m.Height() != 10 {
+	// 32 characters with separators reserve 2 + 25 + 2 codewords: 4x12.
+	if m == nil || m.Width() != 99 || m.Height() != 12 {
 		t.Fatalf("MicroPDF %v", m)
 	}
 	var row strings.Builder
@@ -71,7 +72,7 @@ func TestMicroPDF(t *testing.T) {
 		}
 	}
 	first, _ := strconv.ParseUint(row.String()[10:27], 2, 32)
-	v, _ := micropdf.Smallest(4, 20)
+	v, _ := micropdf.Smallest(4, 29)
 	if uint32(first) != pdf417.CodewordPattern(v.Cluster, pdf417.CWLinkageOther) {
 		t.Errorf("first codeword pattern %017b", first)
 	}
@@ -83,13 +84,13 @@ func TestMicroPDF(t *testing.T) {
 		t.Errorf("matrix hash %s", got)
 	}
 	s2, _ := Encode("123456,ABC,X", Options{FieldSeparator: 0x1D})
-	if s2.MicroPDF == nil || s2.MicroPDF.Height() != 4 {
+	if s2.MicroPDF == nil || s2.MicroPDF.Height() != 6 { // 4x6 is the smallest a ZD420 prints
 		t.Errorf("small symbol: %v", s2.MicroPDF)
 	}
 }
 
 // tlcHash pins the MicroPDF417 module rows of TestMicroPDF.
-const tlcHash = "7a78410fefec3448"
+const tlcHash = "e15cece9ea37dcb1"
 
 func TestRejectsTrailingDataWithoutComma(t *testing.T) {
 	for _, d := range []string{"1234567;SERIAL", "1234567", "123456X"} {

@@ -98,6 +98,27 @@ type Options struct {
 	// Mode is the ^BF mode 0..33 (Zebra's column/row/EC table), or ModeAuto.
 	// The ^BF default is 0 (1 column x 11 rows).
 	Mode int
+	// ZebraPadding fills unused data capacity like a Zebra printer (see
+	// PadZebra) instead of with 900 codewords.
+	ZebraPadding bool
+}
+
+// zebraPad is the padding a ZD420 appends after MicroPDF417 data, repeated
+// as needed: Text Compaction latches that decode to no characters.
+var zebraPad = func() []int {
+	p := []int{900, 838, 779, 867, 865, 898, 868, 839}
+	return append(append(append(append([]int{}, p...), p...), p...), 900)
+}()
+
+// PadZebra pads data codewords to n the way Zebra printers do (checked on
+// a ZD420): the sequence 900 838 779 867 865 898 868 839 three times, then
+// 900, repeated. The codewords are Text Compaction sub-mode latches, so
+// decoders read the same data as with standard 900 padding.
+func PadZebra(data []int, n int) []int {
+	for i := 0; len(data) < n; i++ {
+		data = append(data, zebraPad[i%len(zebraPad)])
+	}
+	return data
 }
 
 // Encode encodes data (Text/Numeric/Byte compaction) as a MicroPDF417
@@ -116,6 +137,9 @@ func Encode(data []byte, opts Options) (barcode.Matrix, error) {
 		if v, err = ZebraMode(opts.Mode); err != nil {
 			return barcode.Matrix{}, err
 		}
+	}
+	if opts.ZebraPadding && len(cws) <= v.DataCapacity() {
+		cws = PadZebra(cws, v.DataCapacity())
 	}
 	return EncodeCodewords(cws, v)
 }

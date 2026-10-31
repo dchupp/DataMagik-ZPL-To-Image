@@ -431,9 +431,11 @@ func expElements(b bitString, symChars int) (elements []int, codeblocks int) {
 }
 
 func encodeExpanded(data string, opt Options) (Symbol, error) {
-	src, text, err := ParseElementString(data)
-	if err != nil {
-		return Symbol{}, err
+	src, text, err := data, data, error(nil)
+	if !opt.ZebraParentheses || !strings.Contains(data, "(") {
+		if src, text, err = ParseElementString(data); err != nil {
+			return Symbol{}, err
+		}
 	}
 	seg := opt.Segments
 	if seg <= 0 || seg > 22 {

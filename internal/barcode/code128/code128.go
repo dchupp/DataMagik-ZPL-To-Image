@@ -391,9 +391,9 @@ func fits(t int, s subset) bool {
 }
 
 // chooseAB picks subset A if a control character appears before any
-// lowercase character from position i on, else subset B (ISO/IEC 15417
-// Annex E).
-func chooseAB(toks []int, i int) subset {
+// lowercase character from position i on, subset B if a lowercase one does,
+// else tie (ISO/IEC 15417 Annex E uses B).
+func chooseAB(toks []int, i int, tie subset) subset {
 	for ; i < len(toks); i++ {
 		t := toks[i]
 		if t < 0 {
@@ -407,13 +407,17 @@ func chooseAB(toks []int, i int) subset {
 			return setB
 		}
 	}
-	return setB
+	return tie
 }
 
 // autoEncode selects subsets following the ISO/IEC 15417 Annex E rules,
 // which match Zebra's documented behaviour (a run of four or more digits
 // switches to subset C).
-func autoEncode(toks []int) []int {
+func autoEncode(toks []int) []int { return autoEncodeTie(toks, setB) }
+
+// autoEncodeTie is autoEncode with the subset used when neither A nor B is
+// required.
+func autoEncodeTie(toks []int, tie subset) []int {
 	j := 0
 	for j < len(toks) && toks[j] == tokFNC1 {
 		j++
@@ -432,7 +436,7 @@ func autoEncode(toks []int) []int {
 	case nd >= 4 && !oddFirst(j, nd), nd == 2 && j+2 == len(toks):
 		set = setC
 	default:
-		set = chooseAB(toks, j)
+		set = chooseAB(toks, j, tie)
 	}
 	vals := []int{valStartA + int(set)}
 	enc := func(t int, s subset) {
@@ -472,7 +476,7 @@ func autoEncode(toks []int) []int {
 				i += 2
 				continue
 			}
-			set = chooseAB(toks, i)
+			set = chooseAB(toks, i, tie)
 			vals = append(vals, [...]int{valCodeA, valCodeB}[set])
 			continue
 		}

@@ -38,6 +38,7 @@ package composite
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/micropdf"
@@ -96,6 +97,10 @@ type Options struct {
 	// 11 * (number of Code 128 symbol characters incl. start, linkage,
 	// check and stop) + 2.
 	LinearWidth int
+	// ZebraParentheses encodes bracketed data such as "(10)ABC" as the
+	// literal text, parentheses included, instead of parsing the AIs, as
+	// Zebra printers do (checked on a ZD420).
+	ZebraParentheses bool
 }
 
 // Component is an encoded 2D component.
@@ -118,9 +123,11 @@ type Component struct {
 // Encode builds the 2D component for GS1 data (bracketed "(01)..." form or
 // an FNC1/GS-separated element string).
 func Encode(data string, opts Options) (Component, error) {
-	src, err := ElementString(data)
-	if err != nil {
-		return Component{}, err
+	src, err := data, error(nil)
+	if !opts.ZebraParentheses || !strings.HasPrefix(data, "(") {
+		if src, err = ElementString(data); err != nil {
+			return Component{}, err
+		}
 	}
 	cols := opts.Linear.Columns()
 	switch opts.Type {

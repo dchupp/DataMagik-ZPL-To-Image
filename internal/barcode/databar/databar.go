@@ -56,6 +56,12 @@ type Options struct {
 	// component will be printed above the symbol (ZPL data contained '|').
 	Linkage bool
 
+	// ZebraParentheses encodes Expanded data containing parentheses as the
+	// literal text, in general-purpose mode, instead of parsing the AIs.
+	// Zebra printers (checked on a ZD420) do this, so "(01)…" is scanned as
+	// the characters "(01)…" rather than as a GS1 element string.
+	ZebraParentheses bool
+
 	// Segments is Zebra's ^BR f: Expanded segments (symbol characters) per
 	// row, 2–22 and even. 0 means 22 (single row for all valid data).
 	// Fewer segments than the data needs produce GS1 DataBar Expanded

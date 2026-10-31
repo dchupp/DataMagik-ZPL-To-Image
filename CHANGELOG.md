@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/); until 1.0.0, minor versions may
 change the API.
 
+## [Unreleased]
+
+### Changed
+- Further behaviour measured on a ZD420; these symbologies now match its
+  output pixel for pixel:
+  - CODABLOCK: row height includes the one-module separator.
+  - `^BR`: data in parentheses is encoded as literal text (DataBar Expanded,
+    composite GS1-128 and 2D components). Composite symbols start 7 or 10
+    modules right of the origin. UPC/EAN composites have fixed bar heights
+    and a 6-module separator. Composite Code 128 prefers subset A and drops
+    the linkage character when there is no 2D part.
+  - PDF417/MicroPDF417: Numeric Compaction from 14 digits (all-digit data
+    sooner), punctuation shifts, and MicroPDF417 Zebra padding.
+  - TLC39: no flag without a 2D part, `*` field separators, the printer's
+    MicroPDF417 sizing, a one-module gap and the taller flag.
+- The printer harness takes `ZPL_PRINTER_ONLY` to run selected fixtures.
+
+### Known limitations
+- A ZD420 misencodes unbracketed DataBar Expanded data with AIs 01 and
+  320x (as 393x); this library keeps the correct encoding.
+
 ## [0.1.0] - 2026-10-31
 
 First release.
@@ -76,4 +97,5 @@ First release.
 - `^GF`/`~DY` format C (AR-compressed) and `~DS` Intellifont downloads are
   proprietary and not decoded.
 
+[Unreleased]: https://github.com/dchupp/DataMagik-ZPL-To-Image/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/dchupp/DataMagik-ZPL-To-Image/releases/tag/v0.1.0

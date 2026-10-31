@@ -7,6 +7,8 @@ package verify
 //
 //	ZPL_PRINTER=10.0.20.200:9100 go test -tags zebra -run Zebra -v ./internal/verify
 //
+// ZPL_PRINTER_ONLY=q07 limits the run to fixtures whose name contains q07.
+//
 // Each fixture is sent with ^IS (store the label image in printer RAM, do
 // not print), the image is read back with ^HG, then deleted with ^ID. At the
 // end the printer's saved configuration is reloaded with ^JUR, undoing any
@@ -206,6 +208,9 @@ func TestZebraComparison(t *testing.T) {
 	}
 	for _, file := range files {
 		name := strings.TrimSuffix(filepath.Base(file), ".zpl")
+		if only := os.Getenv("ZPL_PRINTER_ONLY"); only != "" && !strings.Contains(name, only) {
+			continue
+		}
 		src, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)

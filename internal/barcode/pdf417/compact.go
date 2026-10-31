@@ -139,6 +139,12 @@ func textValues(s []byte, sub int) ([]int, int) {
 			case isLower(c):
 				v = append(v, 27) // ll
 				sub = subLower
+			case sub != subMixed && isPunct(c) && i+1 < len(s) && valueIn(s[i+1], sub) >= 0:
+				// A single punctuation character that is also in Mixed is
+				// shifted, not latched, when the next character stays in
+				// this sub-mode (as on a ZD420).
+				v = append(v, 29, int(punctVal[c])) // ps (shift)
+				i++
 			case isMixed(c):
 				v = append(v, 28) // ml
 				sub = subMixed
@@ -166,24 +172,47 @@ type encoder struct {
 	cws  []int
 	mode int
 	sub  int
+	// minNumeric is the shortest digit run put in Numeric Compaction.
+	minNumeric int
 }
 
 // Compact performs PDF417 high-level encodation of data, starting in Text
 // Compaction (Alpha) mode as PDF417 decoders do. The result holds data
 // codewords only (no length descriptor or padding).
+//
+// Digit runs go to Numeric Compaction as on a ZD420: runs of 14 or more
+// digits, or data of 13 or more digits only (ISO/IEC 15438 Annex N uses 13
+// throughout).
 func Compact(data []byte) []int {
-	e := &encoder{mode: modeText, sub: subAlpha}
+	e := &encoder{mode: modeText, sub: subAlpha, minNumeric: 14}
+	if n := len(data); n >= 13 && digitRun(data, 0) == n {
+		e.minNumeric = 13
+	}
 	e.encode(data)
 	return e.cws
 }
 
 // CompactMicro is Compact for MicroPDF417, whose decoders start in Byte
-// Compaction mode (ISO/IEC 24728 5.4): Text Compaction is always entered
-// with an explicit 900 latch and Byte Compaction with an explicit 901/924.
+// Compaction mode (ISO/IEC 24728 5.4), so data that begins in Text
+// Compaction gets an explicit 900 latch. Modes are chosen as a ZD420 does:
+// as for PDF417 (starting in Text Compaction, so "ABCd" before a long digit
+// run is text, not bytes), except that data of digits only always uses
+// Numeric Compaction.
 func CompactMicro(data []byte) []int {
-	e := &encoder{mode: modeNone, sub: subAlpha}
+	e := &encoder{mode: modeText, sub: subAlpha, minNumeric: 14}
+	if digitRun(data, 0) == len(data) {
+		e.minNumeric = 1
+	}
 	e.encode(data)
-	return e.cws
+	cws := e.cws
+	if len(cws) > 0 {
+		switch cws[0] {
+		case CWTextLatch, CWByteLatch, CWByteLatch6, CWNumericLatch:
+		default:
+			cws = append([]int{CWTextLatch}, cws...)
+		}
+	}
+	return cws
 }
 
 func digitRun(s []byte, p int) int {
@@ -195,11 +224,11 @@ func digitRun(s []byte, p int) int {
 }
 
 // textRun counts text-encodable characters from p, stopping before a run of
-// 13 or more digits (which goes to Numeric Compaction).
-func textRun(s []byte, p int) int {
+// minNumeric or more digits (which goes to Numeric Compaction).
+func textRun(s []byte, p, minNumeric int) int {
 	n := 0
 	for p+n < len(s) {
-		if d := digitRun(s, p+n); d >= 13 {
+		if d := digitRun(s, p+n); d >= minNumeric {
 			break
 		} else if d > 0 {
 			n += d
@@ -213,15 +242,15 @@ func textRun(s []byte, p int) int {
 	return n
 }
 
-// byteRun counts characters from p up to the next run of >= 13 digits or
-// >= 5 text characters.
-func byteRun(s []byte, p int) int {
+// byteRun counts characters from p up to the next run of >= minNumeric
+// digits or >= 5 text characters.
+func byteRun(s []byte, p, minNumeric int) int {
 	q := p
 	for q < len(s) {
-		if digitRun(s, q) >= 13 {
+		if digitRun(s, q) >= minNumeric {
 			break
 		}
-		t := textRun(s, q)
+		t := textRun(s, q, minNumeric)
 		if t >= 5 {
 			break
 		}
@@ -237,12 +266,12 @@ func byteRun(s []byte, p int) int {
 func (e *encoder) encode(s []byte) {
 	textCount := 0 // values emitted in the current text segment (parity)
 	for p := 0; p < len(s); {
-		if d := digitRun(s, p); d >= 13 {
+		if d := digitRun(s, p); d >= e.minNumeric {
 			e.numeric(s[p : p+d])
 			p += d
 			continue
 		}
-		t := textRun(s, p)
+		t := textRun(s, p, e.minNumeric)
 		end := p+t == len(s)
 		if t > 0 && (t >= 5 || e.mode == modeText || (end && (e.mode != modeByte || t >= 3))) {
 			if e.mode != modeText {
@@ -257,7 +286,7 @@ func (e *encoder) encode(s []byte) {
 			p += t
 			continue
 		}
-		b := byteRun(s, p)
+		b := byteRun(s, p, e.minNumeric)
 		if b == 0 {
 			b = 1
 		}
