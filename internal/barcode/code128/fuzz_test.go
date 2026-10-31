@@ -3,8 +3,8 @@ package code128_test
 import (
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/code128"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code128"
 )
 
 func FuzzEncode(f *testing.F) {

@@ -3,7 +3,7 @@ package databar
 import (
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/gs1"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/gs1"
 )
 
 // FNC1 is the field separator used in reduced GS1 data (ASCII GS).

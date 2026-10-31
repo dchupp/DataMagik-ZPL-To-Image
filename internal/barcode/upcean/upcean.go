@@ -9,8 +9,8 @@ package upcean
 import (
 	"fmt"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/gs1"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/gs1"
 )
 
 // lCodes are the odd-parity (set A / L) widths, starting with a space. The

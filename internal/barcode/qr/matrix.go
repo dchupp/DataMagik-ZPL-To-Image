@@ -1,6 +1,6 @@
 package qr
 
-import "github.com/datamagik/zpl-to-image/internal/barcode"
+import "github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 
 // symbol is a QR module grid under construction.
 type symbol struct {

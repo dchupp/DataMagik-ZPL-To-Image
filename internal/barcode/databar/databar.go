@@ -33,8 +33,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/gs1"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/gs1"
 )
 
 // Type is a ^BR symbology type (only the DataBar types 1–6).

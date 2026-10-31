@@ -19,7 +19,7 @@ import (
 	ot "github.com/go-text/typesetting/font/opentype"
 	"golang.org/x/image/vector"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 //go:embed data/RobotoCondensed-Bold.ttf

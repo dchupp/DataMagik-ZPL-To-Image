@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/qr"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/qr"
 )
 
 func FuzzEncodeZPL(f *testing.F) {

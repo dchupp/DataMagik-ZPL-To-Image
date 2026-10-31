@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // ratioRuns converts pixel runs measured from a Zebra figure into 1/2

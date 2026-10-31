@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/code128"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code128"
 )
 
 // gozxing drops FNC1 separators unless ASSUME_GS1 is set, so GS1 cases

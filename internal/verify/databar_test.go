@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/databar"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/databar"
 )
 
 // gozxing only reads GS1 DataBar Omnidirectional/Truncated (RSS-14); the

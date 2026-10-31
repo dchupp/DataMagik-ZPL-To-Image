@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/gs1"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/gs1"
 )
 
 // Mode is the ^BC m parameter.

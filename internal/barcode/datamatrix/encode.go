@@ -3,7 +3,7 @@ package datamatrix
 import (
 	"fmt"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // itemKind classifies one unit of input after escape processing.

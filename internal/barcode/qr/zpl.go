@@ -1,6 +1,6 @@
 package qr
 
-import "github.com/datamagik/zpl-to-image/internal/barcode"
+import "github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 
 // Field is the result of parsing ^BQ field data.
 type Field struct {

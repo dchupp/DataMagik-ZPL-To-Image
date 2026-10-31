@@ -12,7 +12,7 @@ import (
 	"io"
 	"os"
 
-	zpl "github.com/datamagik/zpl-to-image"
+	zpl "github.com/dchupp/DataMagik-ZPL-To-Image"
 )
 
 func main() {

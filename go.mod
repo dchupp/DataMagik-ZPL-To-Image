@@ -1,4 +1,4 @@
-module github.com/datamagik/zpl-to-image
+module github.com/dchupp/DataMagik-ZPL-To-Image
 
 go 1.26.10
 

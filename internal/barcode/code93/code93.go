@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // Options carries the parsed ^BA parameters relevant to encoding.

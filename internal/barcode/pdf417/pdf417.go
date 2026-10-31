@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // SecurityAuto selects the ISO/IEC 15438 Annex E recommended minimum error

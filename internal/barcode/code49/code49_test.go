@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 func flat(g [][8]int) string {

@@ -1,6 +1,6 @@
 package code128
 
-import "github.com/datamagik/zpl-to-image/internal/barcode"
+import "github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 
 // EncodeComposite encodes GS1-128 data (mode D syntax) as the linear part of
 // a GS1 Composite symbol. Per ISO/IEC 24723 7.4.3 an extra code set

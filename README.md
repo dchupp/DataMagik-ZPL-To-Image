@@ -3,7 +3,7 @@
 A pure-Go renderer that turns Zebra **ZPL II** label formats into PNG images.
 
 ```go
-import zpl "github.com/datamagik/zpl-to-image"
+import zpl "github.com/dchupp/DataMagik-ZPL-To-Image"
 
 pngs, warnings, err := zpl.RenderPNG(strings.NewReader(`^XA
 ^FO50,50^A0N,50^FDHello, label^FS
@@ -43,7 +43,7 @@ Every barcode symbology is implemented here. `internal/verify` is a separate mod
 The built-in look-alike fonts cover Latin, Greek and Cyrillic (the bitmap fonts also Hebrew). For other scripts, pass fonts that cover them as `Options.FallbackFonts`; they are tried in order for any character the selected ZPL font lacks. For Chinese, Japanese and Korean, import the optional `fonts/notocjk` package (Noto Sans CJK, SIL OFL, ~16 MB, only linked into programs that import it):
 
 ```go
-import "github.com/datamagik/zpl-to-image/fonts/notocjk"
+import "github.com/dchupp/DataMagik-ZPL-To-Image/fonts/notocjk"
 
 opts := zpl.Options{FallbackFonts: [][]byte{notocjk.Regular}}
 ```

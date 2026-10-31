@@ -5,7 +5,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // BitmapSpec describes a fixed dot-matrix font.

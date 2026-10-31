@@ -1,6 +1,6 @@
 package pdf417
 
-import "github.com/datamagik/zpl-to-image/internal/barcode"
+import "github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 
 // Low-level building blocks shared with the micropdf and composite packages.
 

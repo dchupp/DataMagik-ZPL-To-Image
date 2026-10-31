@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/code128"
-	"github.com/datamagik/zpl-to-image/internal/barcode/code39"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code128"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code39"
 )
 
 // Mode is the ^BB m parameter.

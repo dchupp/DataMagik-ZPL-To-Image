@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // params are a command's delimiter-separated parameters.

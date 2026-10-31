@@ -3,7 +3,7 @@ package engine
 import (
 	"image"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // fontSel is a font selection made by ^A or ^A@ inside a field.

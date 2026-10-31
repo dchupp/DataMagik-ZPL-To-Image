@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/i2of5"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/i2of5"
 )
 
 func TestI2of5Decode(t *testing.T) {

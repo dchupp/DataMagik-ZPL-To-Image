@@ -5,9 +5,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/encoding"
-	"github.com/datamagik/zpl-to-image/internal/font"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/encoding"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/font"
 )
 
 // Default cell sizes (h, w) of fonts P–V at 8 dots/mm.

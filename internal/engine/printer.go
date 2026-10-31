@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/encoding"
-	"github.com/datamagik/zpl-to-image/internal/font"
-	"github.com/datamagik/zpl-to-image/internal/lexer"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/encoding"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/font"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/lexer"
 )
 
 // Options configure a Printer.

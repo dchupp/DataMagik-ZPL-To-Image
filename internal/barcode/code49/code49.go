@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // internalSet is the Code 49 code character set in value order (0–48) as

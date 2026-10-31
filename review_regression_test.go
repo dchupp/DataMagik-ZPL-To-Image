@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datamagik/zpl-to-image/internal/engine"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/engine"
 )
 
 // Regression tests for the code review findings.

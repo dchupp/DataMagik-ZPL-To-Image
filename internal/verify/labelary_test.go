@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	zpl "github.com/datamagik/zpl-to-image"
+	zpl "github.com/dchupp/DataMagik-ZPL-To-Image"
 )
 
 // notComparable lists fixtures using symbologies Labelary does not render.

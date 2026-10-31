@@ -7,7 +7,7 @@ import (
 	"image"
 	"image/color"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // MatrixImage draws m with square modules of scale pixels and a quiet zone of

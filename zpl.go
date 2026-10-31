@@ -17,8 +17,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/engine"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/engine"
 )
 
 // Options configure rendering.
@@ -41,7 +41,7 @@ type Options struct {
 	Strict bool
 	// FallbackFonts are TrueType/OpenType fonts (TTF, OTF, TTC) used for
 	// characters no ZPL font has, tried in order. Import
-	// github.com/datamagik/zpl-to-image/fonts/notocjk for a CJK font.
+	// github.com/dchupp/DataMagik-ZPL-To-Image/fonts/notocjk for a CJK font.
 	FallbackFonts [][]byte
 	// MaxPixels limits the total size of the images Render and RenderPNG
 	// return (default DefaultMaxPixels). RenderEach is not limited.

@@ -6,7 +6,7 @@ import (
 	"image"
 	"strings"
 
-	zpl "github.com/datamagik/zpl-to-image"
+	zpl "github.com/dchupp/DataMagik-ZPL-To-Image"
 )
 
 // Render a label to PNG.

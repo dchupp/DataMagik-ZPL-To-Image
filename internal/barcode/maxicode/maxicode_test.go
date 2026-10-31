@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // ISO/IEC 16023:2000 Figure 2 (mode 4, 93 code set A characters).

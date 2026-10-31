@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/code93"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code93"
 )
 
 func TestCode93Decode(t *testing.T) {

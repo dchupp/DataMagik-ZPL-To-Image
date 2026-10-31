@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/code39"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code39"
 )
 
 // The decoder runs in Full ASCII mode, so lowercase and punctuation must

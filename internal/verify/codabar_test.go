@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/codabar"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/codabar"
 )
 
 // gozxing strips the start/stop characters (no RETURN_CODABAR_START_END

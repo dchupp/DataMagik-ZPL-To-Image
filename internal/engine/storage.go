@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/font"
-	"github.com/datamagik/zpl-to-image/internal/lexer"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/font"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/lexer"
 )
 
 // object is a file on one of the printer's virtual drives.

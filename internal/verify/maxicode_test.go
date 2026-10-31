@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/maxicode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/maxicode"
 )
 
 // gozxing has no MaxiCode reader, so these round trips use an external

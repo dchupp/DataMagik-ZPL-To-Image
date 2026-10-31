@@ -3,7 +3,7 @@ package databar
 import (
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/gs1"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/gs1"
 )
 
 // bitString is an MSB-first bit accumulator.

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // runs converts "B8 s4 ..." pixel runs measured from a Zebra-rendered figure

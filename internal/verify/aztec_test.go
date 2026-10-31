@@ -8,7 +8,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/aztec"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/aztec"
 )
 
 func aztecRoundTrip(t *testing.T, name string, data []byte, o aztec.Options, want string) {

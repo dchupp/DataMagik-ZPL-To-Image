@@ -1,9 +1,9 @@
-module github.com/datamagik/zpl-to-image/internal/verify
+module github.com/dchupp/DataMagik-ZPL-To-Image/internal/verify
 
 go 1.26.10
 
 require (
-	github.com/datamagik/zpl-to-image v0.0.0
+	github.com/dchupp/DataMagik-ZPL-To-Image v0.0.0
 	github.com/makiuchi-d/gozxing v0.1.1
 )
 
@@ -15,4 +15,4 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
-replace github.com/datamagik/zpl-to-image => ../..
+replace github.com/dchupp/DataMagik-ZPL-To-Image => ../..

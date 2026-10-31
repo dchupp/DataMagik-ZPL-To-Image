@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datamagik/zpl-to-image/internal/compress"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/compress"
 )
 
 var fixedNow = func() time.Time { return time.Date(2026, 3, 4, 13, 5, 6, 0, time.UTC) }

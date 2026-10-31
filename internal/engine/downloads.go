@@ -9,10 +9,10 @@ import (
 
 	"golang.org/x/image/bmp"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/compress"
-	"github.com/datamagik/zpl-to-image/internal/font"
-	"github.com/datamagik/zpl-to-image/internal/lexer"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/compress"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/font"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/lexer"
 )
 
 // splitHead splits off n delimiter-separated header parameters and returns

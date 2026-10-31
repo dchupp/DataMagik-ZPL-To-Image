@@ -9,7 +9,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/datamatrix"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/datamatrix"
 )
 
 func dmLatin1(b []byte) string {

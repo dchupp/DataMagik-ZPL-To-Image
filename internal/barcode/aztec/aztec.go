@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 // DefaultECPercent is the error correction level used when none is given:

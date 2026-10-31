@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"image"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/lexer"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/lexer"
 )
 
 // byDefaults is the ^BY state.

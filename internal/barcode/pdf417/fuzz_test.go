@@ -3,8 +3,8 @@ package pdf417_test
 import (
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/pdf417"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/pdf417"
 )
 
 func FuzzEncode(f *testing.F) {

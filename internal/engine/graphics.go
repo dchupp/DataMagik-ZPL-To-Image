@@ -3,7 +3,7 @@ package engine
 import (
 	"math"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // boxMask draws ^GB: a w×h box with border thickness t and corner rounding

@@ -1,7 +1,7 @@
 package font
 
 import (
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // SymbolFace returns the ^GS graphic symbol font at an h×w cell. Field data

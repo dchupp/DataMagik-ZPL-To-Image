@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/codablock"
-	"github.com/datamagik/zpl-to-image/internal/barcode/code128"
-	"github.com/datamagik/zpl-to-image/internal/barcode/composite"
-	"github.com/datamagik/zpl-to-image/internal/barcode/databar"
-	"github.com/datamagik/zpl-to-image/internal/barcode/micropdf"
-	"github.com/datamagik/zpl-to-image/internal/barcode/pdf417"
-	"github.com/datamagik/zpl-to-image/internal/barcode/tlc39"
-	"github.com/datamagik/zpl-to-image/internal/barcode/upcean"
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/codablock"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/code128"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/composite"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/databar"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/micropdf"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/pdf417"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/tlc39"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/upcean"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
 )
 
 // pdfFamily handles ^B7, ^BF, ^BB and ^BT.

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/micropdf"
-	"github.com/datamagik/zpl-to-image/internal/barcode/pdf417"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/micropdf"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/pdf417"
 )
 
 func elemString(l barcode.Linear) string {

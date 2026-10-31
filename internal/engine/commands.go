@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datamagik/zpl-to-image/internal/bitmap"
-	"github.com/datamagik/zpl-to-image/internal/compress"
-	"github.com/datamagik/zpl-to-image/internal/encoding"
-	"github.com/datamagik/zpl-to-image/internal/lexer"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/bitmap"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/compress"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/encoding"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/lexer"
 )
 
 type handler func(f *format, c lexer.Command, ps params) error

@@ -10,8 +10,8 @@ package micropdf
 import (
 	"fmt"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
-	"github.com/datamagik/zpl-to-image/internal/barcode/pdf417"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/pdf417"
 )
 
 // Variant is one of the 34 MicroPDF417 symbol sizes of ISO/IEC 24728

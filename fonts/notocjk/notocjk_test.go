@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	zpl "github.com/datamagik/zpl-to-image"
-	"github.com/datamagik/zpl-to-image/fonts/notocjk"
+	zpl "github.com/dchupp/DataMagik-ZPL-To-Image"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/fonts/notocjk"
 )
 
 func ink(t *testing.T, o zpl.Options) int {

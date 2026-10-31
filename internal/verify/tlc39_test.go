@@ -5,7 +5,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode/tlc39"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode/tlc39"
 )
 
 // The TLC39 linear part is a plain Code 39 symbol of the ECI number.

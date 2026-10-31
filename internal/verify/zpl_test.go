@@ -7,7 +7,7 @@ import (
 
 	"github.com/makiuchi-d/gozxing"
 
-	zpl "github.com/datamagik/zpl-to-image"
+	zpl "github.com/dchupp/DataMagik-ZPL-To-Image"
 )
 
 // TestRenderedLabelsDecode renders single-symbol labels through the public

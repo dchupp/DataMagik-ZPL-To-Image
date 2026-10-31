@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/datamagik/zpl-to-image/internal/barcode"
+	"github.com/dchupp/DataMagik-ZPL-To-Image/internal/barcode"
 )
 
 func codewords(t *testing.T, segs []Segment, opts Options, model, version int) []byte {
