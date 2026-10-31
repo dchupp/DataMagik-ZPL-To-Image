@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Weekly, so newly published vulnerabilities are reported even when
+    # the code does not change.
+    - cron: "17 6 * * 1"
 
 jobs:
   test:
@@ -19,6 +23,9 @@ jobs:
         run: go vet ./...
       - name: Test
         run: go test -race ./...
+      - name: Font module
+        working-directory: fonts/notocjk
+        run: go test ./...
       - name: Decode round-trips
         working-directory: internal/verify
         run: |
@@ -26,3 +33,17 @@ jobs:
           go test ./...
       - name: Fuzz (smoke)
         run: go test -run XXX -fuzz FuzzRender -fuzztime 60s .
+
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: govulncheck
+        run: |
+          for dir in . fonts/notocjk internal/verify; do
+            echo "== $dir"
+            (cd "$dir" && go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...)
+          done
