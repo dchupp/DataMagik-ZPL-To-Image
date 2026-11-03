@@ -6,6 +6,11 @@ change the API.
 
 ## [Unreleased]
 
+### Added
+- Pushing a version tag publishes a GitHub release with `zpl2png` builds
+  for Linux, macOS and Windows (amd64 and arm64) and the CHANGELOG notes
+  for that version.
+
 ## [0.3.3] - 2026-10-31
 
 ### Added
